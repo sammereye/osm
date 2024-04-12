@@ -198,17 +198,17 @@ export default function Leaflet() {
     }
   }, [map])
 
+  // Function to calculate distance between two coordinates
+  function calculateDistance(coord1: LatLngQuery, coord2: LatLngQuery) {
+    const dx = coord1.lon - coord2.lon;
+    const dy = coord1.lat - coord2.lat;
+    return Math.sqrt(dx * dx + dy * dy); // Euclidean distance
+  }
+
   function findClosestCoordinate(targetCoord: LatLngQuery, coordArray: LatLngQuery[]): LatLngQuery {
     // Error handling: Ensure valid input
     if (!Array.isArray(coordArray) || coordArray.length === 0) {
       throw new Error("Invalid coordArray: must be a non-empty array");
-    }
-  
-    // Function to calculate distance between two coordinates
-    function calculateDistance(coord1: LatLngQuery, coord2: LatLngQuery) {
-      const dx = coord1.lon - coord2.lon;
-      const dy = coord1.lat - coord2.lat;
-      return Math.sqrt(dx * dx + dy * dy); // Euclidean distance
     }
   
     // Logic to find the closest coordinate
@@ -226,6 +226,34 @@ export default function Leaflet() {
     return closestCoord || coordArray[0];
   }
 
+  function findClosestPointOnLine(targetCoord: LatLngQuery, lineSegment: LatLngQuery[]) {
+    // Destructure coordinates for clarity
+    const { lat: lat1, lon: lon1} = lineSegment[0];
+    const { lat: lat2, lon: lon2} = lineSegment[1];
+  
+    // Calculate line parameters (avoid division by zero issues)
+    const dlat = lat2 - lat1;
+    const dlon = lon2 - lon1;
+    const lineLengthSquared = dlat * dlat + dlon * dlon;
+  
+    // Special case: Line is a single point
+    if (lineLengthSquared === 0) {
+      return lineSegment[0]; 
+    }
+  
+    // Project the point onto the line extent
+    let t = ((targetCoord.lat - lat1) * dlat + (targetCoord.lon - lon1) * dlon) / lineLengthSquared;
+  
+    // Clamp 't' to the line segment's range (0 to 1)
+    t = Math.max(0, Math.min(1, t));
+  
+    // Calculate coordinates of the closest point on the line 
+    const closestLat = lat1 + t * dlat;
+    const closestLon = lon1 + t * dlon;
+  
+    return {lat: closestLat, lon: closestLon};
+  }
+
   function findClosestLine(targetCoord: LatLngQuery, coordArray: LatLngQuery[]): LatLngQuery[] {
     const closestCoordinate = findClosestCoordinate(targetCoord, coordArray);
     const closestCoordinateIndex = coordArray.findIndex(coord => coord.lat === closestCoordinate.lat && coord.lon === closestCoordinate.lon);
@@ -236,9 +264,18 @@ export default function Leaflet() {
       return [coordArray[coordArray.length - 2], coordArray[coordArray.length - 1]]
     }
 
-    const secondClosestCoordinate = findClosestCoordinate(targetCoord, [coordArray[closestCoordinateIndex - 1], coordArray[closestCoordinateIndex + 1]]);
+    const closestPointOnLine1 = findClosestPointOnLine(targetCoord, [coordArray[closestCoordinateIndex - 1], closestCoordinate]);
+    const closestPointOnLine2 = findClosestPointOnLine(targetCoord, [coordArray[closestCoordinateIndex + 1], closestCoordinate]);
 
-    return [closestCoordinate, secondClosestCoordinate];
+    const distanceOnLine1 = calculateDistance(closestPointOnLine1, targetCoord);
+    const distanceOnLine2 = calculateDistance(closestPointOnLine2, targetCoord);
+
+    let closestPoint = closestPointOnLine1;
+    if (distanceOnLine2 < distanceOnLine1) {
+      closestPoint = closestPointOnLine2;
+    }
+
+    return [closestPoint];
   }
 
   function removeDuplicateLatLngQueryWithRoad(arr: LatLngQueryWithRoad[]) {
