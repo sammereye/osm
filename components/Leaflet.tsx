@@ -1,4 +1,4 @@
-import { Element, ElementWithWeight, LatLngQuery, OverpassQuery } from "@/models/OverpassQuery";
+import { Element, ElementWithWeight, LatLngQuery, LatLngQueryWithRoad, OverpassQuery } from "@/models/OverpassQuery";
 import leaflet, { LatLngExpression, Map } from "leaflet";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Circle, MapContainer, Polygon, Polyline, TileLayer } from "react-leaflet";
@@ -198,7 +198,7 @@ export default function Leaflet() {
     }
   }, [map])
 
-  function findClosestCoordinate(targetCoord:  LatLngQuery, coordArray: LatLngQuery[]): LatLngQuery {
+  function findClosestCoordinate(targetCoord: LatLngQuery, coordArray: LatLngQuery[]): LatLngQuery {
     // Error handling: Ensure valid input
     if (!Array.isArray(coordArray) || coordArray.length === 0) {
       throw new Error("Invalid coordArray: must be a non-empty array");
@@ -226,16 +226,46 @@ export default function Leaflet() {
     return closestCoord || coordArray[0];
   }
 
+  function findClosestLine(targetCoord: LatLngQuery, coordArray: LatLngQuery[]): LatLngQuery[] {
+    const closestCoordinate = findClosestCoordinate(targetCoord, coordArray);
+    const closestCoordinateIndex = coordArray.findIndex(coord => coord.lat === closestCoordinate.lat && coord.lon === closestCoordinate.lon);
+
+    if (closestCoordinateIndex === 0) {
+      return [coordArray[0], coordArray[1]]
+    } else if (closestCoordinateIndex === coordArray.length - 1) {
+      return [coordArray[coordArray.length - 2], coordArray[coordArray.length - 1]]
+    }
+
+    const secondClosestCoordinate = findClosestCoordinate(targetCoord, [coordArray[closestCoordinateIndex - 1], coordArray[closestCoordinateIndex + 1]]);
+
+    return [closestCoordinate, secondClosestCoordinate];
+  }
+
+  function removeDuplicateLatLngQueryWithRoad(arr: LatLngQueryWithRoad[]) {
+    const seenCoords = new Set();
+    const uniqueArr = [];
+  
+    for (const obj of arr) {
+      const coordKey = `${obj.lat},${obj.lon},${obj.roadId}`; // Create a combined key
+      if (!seenCoords.has(coordKey)) {
+        uniqueArr.push(obj);
+        seenCoords.add(coordKey);
+      }
+    }
+  
+    return uniqueArr;
+  }
+
   useEffect(() => {
     if (startingBuilding && destinationBuilding) {
-      const startingBuildingAssociatedRoad = roadData.current.filter(x => x.tags && x.tags.name &&  x.tags.name === startingBuilding.tags["addr:street"])[0];
-      const destinationBuildingAssociatedRoad = roadData.current.filter(x => x.tags && x.tags.name &&  x.tags.name === destinationBuilding.tags["addr:street"])[0];
+      const startingBuildingAssociatedRoads = roadData.current.filter(x => x.tags && x.tags.name &&  x.tags.name === startingBuilding.tags["addr:street"]);
+      const destinationBuildingAssociatedRoads = roadData.current.filter(x => x.tags && x.tags.name &&  x.tags.name === destinationBuilding.tags["addr:street"]);
 
-      if (startingBuildingAssociatedRoad && destinationBuildingAssociatedRoad) {
-        const closestStartingBuildingGeometry = findClosestCoordinate(startingBuilding.geometry[0], startingBuildingAssociatedRoad.geometry) 
-        const closestDestinationBuildingGeometry = findClosestCoordinate(destinationBuilding.geometry[0], destinationBuildingAssociatedRoad.geometry);
+      if (startingBuildingAssociatedRoads.length > 0 && destinationBuildingAssociatedRoads.length > 0) {
+        const closestStartingBuildingPoints = findClosestLine(startingBuilding.geometry[0], removeDuplicateLatLngQueryWithRoad(startingBuildingAssociatedRoads.reduce((arr: LatLngQueryWithRoad[], road: Element) => [...arr, ...road.geometry.map(geo => { return { ...geo, roadId: road.id }})], []))) 
+        const closestDestinationBuildingPoints = findClosestLine(destinationBuilding.geometry[0], removeDuplicateLatLngQueryWithRoad(destinationBuildingAssociatedRoads.reduce((arr: LatLngQueryWithRoad[], road: Element) => [...arr, ...road.geometry.map(geo => { return { ...geo, roadId: road.id }})], []))) 
         setRenderedCircles(prevRenderedCircles => {
-          const circles =  [...prevRenderedCircles, closestStartingBuildingGeometry, closestDestinationBuildingGeometry]
+          const circles =  [...prevRenderedCircles, ...closestStartingBuildingPoints, ...closestDestinationBuildingPoints]
           return circles
         })
       }

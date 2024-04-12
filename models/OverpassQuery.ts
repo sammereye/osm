@@ -30,6 +30,10 @@ export interface LatLngQuery {
   lon: number
 }
 
+export interface LatLngQueryWithRoad extends LatLngQuery {
+  roadId: number
+}
+
 export interface Tags {
   highway?: string
   lanes?: string
