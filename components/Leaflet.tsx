@@ -1,92 +1,283 @@
-import { Element, OverpassQuery } from "@/models/OverpassQuery";
-import { useAnimationFrame } from "framer-motion";
-import leaflet from "leaflet";
-import { useEffect, useRef, useState } from "react";
+import { Element, ElementWithWeight, LatLngQuery, OverpassQuery } from "@/models/OverpassQuery";
+import leaflet, { LatLngExpression, Map } from "leaflet";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Circle, MapContainer, Polygon, Polyline, TileLayer } from "react-leaflet";
 import Car from "./Car";
+import Building from "./Building";
 
 const position: leaflet.LatLngExpression = [39.80575, -86.22963]
 
 export default function Leaflet() {
-  const [roads, setRoads] = useState<Element[]>([]);
-  const [buildings, setBuildings] = useState<Element[]>([]);
+  const roadData = useRef<Element[]>([]);
+  const buildingData = useRef<Element[]>([]);
+  const waterwayData = useRef<Element[]>([]);
+  const grasslandData = useRef<Element[]>([]);
+  const currentBounds = useRef<leaflet.LatLngBounds | null>(null);
 
-  useEffect(() => {
-    fetch(
-      "https://overpass-api.de/api/interpreter",
-      {
-        method: "POST",
-        body: "data="+ encodeURIComponent(`
-          [out:json][timeout:25];
-          (
-            nwr["highway"="residential"](39.80228849993572,-86.239972114563,39.81674434902068,-86.22583150863647);
-            nwr["highway"="secondary"](39.80228849993572,-86.239972114563,39.81674434902068,-86.22583150863647);
-            nwr["highway"="tertiary"](39.80228849993572,-86.239972114563,39.81674434902068,-86.22583150863647);
-            nwr["highway"="service"](39.80228849993572,-86.239972114563,39.81674434902068,-86.22583150863647);
-            nwr["building"="yes"](39.80228849993572,-86.239972114563,39.81674434902068,-86.22583150863647);
-          );
-          out geom;
-        `)
-      },
-    )
-    .then((data) => data.json())
-    .then((results: OverpassQuery) => {
-      if (results && results.elements && results.elements.length > 0) {
-        const roadResults = results.elements.filter(e => e.tags && e.tags.highway);
-        roadResults.forEach(roadElement => {
-          setRoads(prevPolyLines => {
-            return [...prevPolyLines, roadElement]
-          })
-        });
+  const [map, setMap] = useState<Map>();
+  const mapRef = useCallback((mapNode: Map) => {
+    setMap(mapNode)
+  }, []);
+  
+  const [renderedRoads, setRenderedRoads] = useState<ElementWithWeight[]>([]);
+  const [renderedBuildings, setRenderedBuildings] = useState<Element[]>([]);
+  const [renderedWaterways, setRenderedWaterways] = useState<Element[]>([]);
+  const [renderedGrassland, setRenderedGrassland] = useState<Element[]>([]);
+  const [renderedCircles, setRenderedCircles] = useState<LatLngQuery[]>([]);
+  const [startingBuilding, setStartingBuilding] = useState<Element | null>(null);
+  const [destinationBuilding, setDestinationBuilding] = useState<Element | null>(null);
 
-        const buildingResults = results.elements.filter(e => e.tags && e.tags.building && e.tags.building === 'yes');
-        buildingResults.forEach(buildingElement => {
-          setBuildings(prevPolygons => {
-            return [...prevPolygons, buildingElement]
-          })
-        });
-
-        console.log(buildingResults);
-      }
-    })
-  }, [])
-
-  function getRoadWeight(road: Element): number {
-    switch (road?.tags.highway) {
-      case 'primary':
-        return 12;
-      case 'secondary':
-        return 9;
-      case 'tertiary':
-        return 7;
-      case 'residential':
-        return 5;
-      case 'service':
-        return 3;
-      default:
-        return 5;
-    }
+  type Car = {
+    id: number,
+    startingNode: number
   }
 
+  const [cars, setCars] = useState<Car[]>([...Array(3)].map((e, i) => {
+    return {
+      id: i,
+      startingNode: 180704110
+    }
+  }))
+
+  function getRoadWeight(road: Element): number {
+    let weight = 5;
+
+    switch (road?.tags.highway) {
+      case 'motorway':
+      case 'trunk':
+      case 'primary':
+      case 'motorway_link':
+      case 'trunk_link':
+      case 'primary_link':
+        weight = 13;
+        break;
+        case 'secondary':
+        case 'secondary_link':
+        weight = 11;
+        break;
+      case 'tertiary':
+      case 'tertiary_link':
+        weight = 9;
+        break;
+      case 'residential':
+      case 'road':
+      case 'raceway':
+      case 'living_street':
+        weight = 7;
+        break;
+      default:
+        weight = 5;
+    }
+
+    return weight;
+  }
+
+  useEffect(() => {
+    const loadMap = () => {
+      if (map) {
+        const bounds = map.getBounds();
+        const bottomLeftLat = bounds.getSouthWest().lat;
+        const bottomLeftLng = bounds.getSouthWest().lng;
+        const topRightLat = bounds.getNorthEast().lat;
+        const topRightLng = bounds.getNorthEast().lng;
+  
+        const bottomLeftLatStreet = bottomLeftLat - 0.001;
+        const bottomLeftLngStreet = bottomLeftLng + 0.001
+        const topRightLatStreet = topRightLat + 0.001;
+        const topRightLngStreet = topRightLng - 0.001;
+  
+        if (currentBounds.current?.getCenter().lat !== bounds.getCenter().lat || currentBounds.current?.getCenter().lng !== bounds.getCenter().lng) {
+          currentBounds.current = bounds;
+          fetch(
+            "https://overpass-api.de/api/interpreter",
+            {
+              method: "POST",
+              body: "data="+ encodeURIComponent(`
+                [out:json][timeout:25];
+                (
+                  nwr["highway"="motorway"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["highway"="trunk"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["highway"="primary"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["highway"="secondary"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["highway"="tertiary"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["highway"="unclassified"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  
+                  nwr["highway"="motorway_link"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["highway"="trunk_link"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["highway"="primary_link"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["highway"="secondary_link"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["highway"="tertiary_link"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  
+                  nwr["highway"="living_street"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["highway"="service"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["highway"="residential"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["highway"="track"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["highway"="raceway"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["highway"="road"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+
+                  nwr["surface"="grass"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["landuse"="grass"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["waterway"="stream"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+                  nwr["building"="yes"](${bottomLeftLat},${bottomLeftLng},${topRightLat},${topRightLng});
+                );
+                out geom;
+              `)
+            },
+          )
+          .then((data) => data.json())
+          .then((results: OverpassQuery) => {
+            if (results && results.elements && results.elements.length > 0) {
+              const roadResults = results.elements.filter(e => e.tags && e.tags.highway && e.geometry && e.nodes);
+              setRenderedRoads(prevRenderedRoads => {
+                const roads: ElementWithWeight[] = [];
+                roadResults.forEach(roadElement => {
+                  roads.push({
+                    ...roadElement,
+                    weight: getRoadWeight(roadElement)
+                  });
+                  if (roadData.current.filter(x => x.id === roadElement.id).length === 0) {
+                    roadData.current.push(roadElement);
+                  }
+                });
+
+                return roads;
+              })
+
+              const waterwayResults = results.elements.filter(e => e.tags && e.tags.waterway && e.geometry && e.nodes);
+              setRenderedWaterways(prevRenderedWaterways => {
+                const waterways: Element[] = [];
+                waterwayResults.forEach(waterwayElement => {
+                  waterways.push(waterwayElement);
+                  if (waterwayData.current.filter(x => x.id === waterwayElement.id).length === 0) {
+                    waterwayData.current.push(waterwayElement);
+                  }
+                });
+
+                return waterways;
+              })
+
+              const grasslandResults = results.elements.filter(e => e.tags && ((e.tags.landuse && e.tags.landuse === 'grass') || (e.tags.surface && e.tags.surface === 'grass')) && e.geometry && e.nodes);
+              setRenderedGrassland(prevRenderedGrassland => {
+                const grassland: Element[] = [];
+                grasslandResults.forEach(grasslandElement => {
+                  grassland.push(grasslandElement);
+                  if (grasslandData.current.filter(x => x.id === grasslandElement.id).length === 0) {
+                    grasslandData.current.push(grasslandElement);
+                  }
+                });
+
+                return grassland;
+              })
+      
+              const buildingResults = results.elements.filter(e => e.tags && e.tags.building && e.tags.building === 'yes' && e.geometry && e.geometry.length > 3);
+              
+              setRenderedBuildings(prevRenderedBuildings => {
+                const buildings: Element[] = [];
+                buildingResults.forEach(buildingElement => {
+                  buildings.push(buildingElement)
+                  if (buildingData.current.filter(x => x.id === buildingElement.id).length === 0) {
+                    // buildingElement.geometry = simplifyBuilding(buildingElement.geometry)
+                    buildingData.current.push(buildingElement)
+                  }
+                });
+
+                return buildings;
+              })
+            }
+          });
+        }
+      }
+    }
+
+    if (map) {
+      loadMap()
+
+      map.addEventListener("dragend", () => {
+        loadMap()
+      });
+    }
+  }, [map])
+
+  function findClosestCoordinate(targetCoord:  LatLngQuery, coordArray: LatLngQuery[]): LatLngQuery {
+    // Error handling: Ensure valid input
+    if (!Array.isArray(coordArray) || coordArray.length === 0) {
+      throw new Error("Invalid coordArray: must be a non-empty array");
+    }
+  
+    // Function to calculate distance between two coordinates
+    function calculateDistance(coord1: LatLngQuery, coord2: LatLngQuery) {
+      const dx = coord1.lon - coord2.lon;
+      const dy = coord1.lat - coord2.lat;
+      return Math.sqrt(dx * dx + dy * dy); // Euclidean distance
+    }
+  
+    // Logic to find the closest coordinate
+    let closestCoord = null;
+    let minDistance = Infinity;
+  
+    for (const coord of coordArray) {
+      const distance = calculateDistance(targetCoord, coord);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestCoord = coord;
+      }
+    }
+  
+    return closestCoord || coordArray[0];
+  }
+
+  useEffect(() => {
+    if (startingBuilding && destinationBuilding) {
+      const startingBuildingAssociatedRoad = roadData.current.filter(x => x.tags && x.tags.name &&  x.tags.name === startingBuilding.tags["addr:street"])[0];
+      const destinationBuildingAssociatedRoad = roadData.current.filter(x => x.tags && x.tags.name &&  x.tags.name === destinationBuilding.tags["addr:street"])[0];
+
+      if (startingBuildingAssociatedRoad && destinationBuildingAssociatedRoad) {
+        const closestStartingBuildingGeometry = findClosestCoordinate(startingBuilding.geometry[0], startingBuildingAssociatedRoad.geometry) 
+        const closestDestinationBuildingGeometry = findClosestCoordinate(destinationBuilding.geometry[0], destinationBuildingAssociatedRoad.geometry);
+        setRenderedCircles(prevRenderedCircles => {
+          const circles =  [...prevRenderedCircles, closestStartingBuildingGeometry, closestDestinationBuildingGeometry]
+          return circles
+        })
+      }
+    }
+  }, [startingBuilding, destinationBuilding, roadData, setStartingBuilding, setDestinationBuilding])
 
   return (
     <div>
-      <MapContainer className="w-screen h-screen" center={position} zoom={17} zoomControl={false} minZoom={17} maxZoom={17} preferCanvas>
+      <MapContainer ref={mapRef} className="w-screen h-screen" center={position} zoom={18} zoomControl={false} minZoom={18} maxZoom={18}>
       {/* <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       /> */}
-      {roads.map((road, i) => (
-        <Polyline key={i} positions={road.geometry} color="#a8dadc" weight={getRoadWeight(road)}></Polyline>
-      ))}
 
-      {buildings.map((building, i) => (
-        <Polygon key={i} positions={building.geometry} fillColor="#457b9d" fillOpacity={1} stroke={false}></Polygon>
+        {renderedGrassland.map((grassland, i) => (
+          // @ts-ignore
+          <Polygon key={grassland.id} positions={grassland.geometry} fillColor="#a7dfb6" fillOpacity={1} stroke={false}></Polygon>
         ))}
-        {[...Array(5)].map((e, i) => (
-          <Car key={i} roads={roads} startingNode={180704110} />
+
+        {renderedWaterways.map((waterway, i) => (
+          // @ts-ignore
+          <Polyline key={waterway.id} positions={waterway.geometry} color="#b3daff" fillOpacity={1} weight={7}></Polyline>
         ))}
-    </MapContainer>
+
+        {renderedRoads.map((road, i) => (
+          // @ts-ignore
+          <Polyline key={road.id} positions={road.geometry} color="#ffffff" fillOpacity={1} weight={road.weight}></Polyline>
+        ))}
+
+        {renderedBuildings.map((building, i) => (
+          <Building key={building.id} building={building} startingBuilding={startingBuilding} destinationBuilding={destinationBuilding} setStartingBuilding={setStartingBuilding} setDestinationBuilding={setDestinationBuilding} />
+        ))}
+
+        {renderedCircles.map((position, i) => (
+          // @ts-ignore
+          <Circle key={`${position.lat}-${position.lon}`} center={position} radius={5} fillColor="#4b80ea" />
+        ))}
+
+        {false && cars.map((car) => (
+          <Car key={car.id} roads={roadData.current} startingNode={car.startingNode} />
+        ))}
+      </MapContainer>
     </div>
   )
 }

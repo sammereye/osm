@@ -17,8 +17,17 @@ export interface Element {
   id: number
   bounds: LatLngBoundsExpression
   nodes: number[]
-  geometry: LatLngExpression[]
+  geometry: LatLngQuery[]
   tags: Tags
+}
+
+export interface ElementWithWeight extends Element {
+  weight: number
+}
+
+export interface LatLngQuery {
+  lat: number,
+  lon: number
 }
 
 export interface Tags {
@@ -43,4 +52,7 @@ export interface Tags {
   source?: string
   bridge?: string
   layer?: string
+  waterway?: string
+  landuse?: string
+  surface?: string
 }
