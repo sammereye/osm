@@ -35,7 +35,12 @@ export interface LatLngQuery {
 }
 
 export interface LatLngQueryWithRoad extends LatLngQuery {
-  roadId: number
+  roadId: number;
+  f?: number;
+  g?: number;
+  h?: number;
+  debug?: string;
+  parent?: LatLngQueryWithRoad
 }
 
 export interface Tags {

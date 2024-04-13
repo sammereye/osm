@@ -24,6 +24,7 @@ export default function Leaflet() {
   const [renderedWaterways, setRenderedWaterways] = useState<Element[]>([]);
   const [renderedGrassland, setRenderedGrassland] = useState<Element[]>([]);
   const [renderedCircles, setRenderedCircles] = useState<LatLngQueryWithRoad[]>([]);
+  const [renderedRoute, setRenderedRoute] = useState<LatLngQueryWithRoad[]>([]);
   const [startingBuilding, setStartingBuilding] = useState<ElementWithCenter | null>(null);
   const [destinationBuilding, setDestinationBuilding] = useState<ElementWithCenter | null>(null);
 
@@ -302,6 +303,72 @@ export default function Leaflet() {
     return uniqueArr;
   }
 
+  function heuristic(position0: LatLngQueryWithRoad, position1: LatLngQueryWithRoad) {
+    let d1 = Math.abs(position1.lat - position0.lat);
+    let d2 = Math.abs(position1.lon - position0.lon);
+  
+    return d1 + d2;
+  }
+
+  function searchForShortestPath(startPoint: LatLngQueryWithRoad, destinationPoint: LatLngQueryWithRoad): LatLngQueryWithRoad[] {
+    let openList: LatLngQueryWithRoad[] = [{
+      ...startPoint,
+      g: 0,
+      h: heuristic(startPoint, destinationPoint),
+      f: heuristic(startPoint, destinationPoint)
+     }];    
+     let closedList: LatLngQueryWithRoad[] = [];
+
+
+    while (openList.length > 0) {
+      let lowestIndex = -1;
+      for (let i = 0; i < openList.length; i++) {
+        if (lowestIndex === -1 || (openList[i].f ?? 999999) < (openList[lowestIndex].f ?? 999999)) {
+          lowestIndex = i;
+        }
+      }
+
+      const currentNode = openList[lowestIndex];
+
+      if (currentNode.lat === destinationPoint.lat && currentNode.lon === destinationPoint.lon) {
+        let curr = currentNode;
+        let path: LatLngQueryWithRoad[] = []
+        while (curr.parent) {
+          path.push(curr);
+          curr = curr.parent;
+        }
+
+        return path.reverse();
+      }
+
+      openList = openList.filter(x => x.lat !== currentNode.lat && x.lon !== currentNode.lon);
+      closedList.push(currentNode);
+      const roadsCurrentNodeIsOn = roadData.current.filter(x => x.geometry.filter(y => y.lat === currentNode.lat && y.lon === currentNode.lon).length > 0);
+      let neighborNodes: LatLngQueryWithRoad[] = [];
+      roadsCurrentNodeIsOn.forEach((road) => {
+        const currentNodeIndex = road.geometry.findIndex(coord => coord.lat === currentNode.lat && coord.lon === currentNode.lon);
+        neighborNodes = [...neighborNodes, {...road.geometry[currentNodeIndex + 1], roadId: road.id}, {...road.geometry[currentNodeIndex - 1], roadId: road.id}]
+      })
+
+      neighborNodes.forEach(neighborNode => {
+        if (!neighborNode || closedList.filter(x => x.lat === neighborNode.lat && x.lon === neighborNode.lon).length > 0) {
+          return;
+        }
+
+        if (openList.filter(x => x.lat === neighborNode.lat && x.lon === neighborNode.lon).length === 0) {
+          neighborNode.h = heuristic(neighborNode, destinationPoint);
+          neighborNode.parent = currentNode;
+          neighborNode.g = (currentNode.g ?? 999999) + 1;
+          neighborNode.f = neighborNode.g + neighborNode.h;
+          neighborNode.debug = "F: " + neighborNode.f + " G: " + neighborNode.g + " H: " + neighborNode.h;
+          openList.push(neighborNode);
+        }
+      })
+    }
+
+    return [];
+  }
+
   useEffect(() => {
     if (startingBuilding && destinationBuilding) {
       const startingBuildingAssociatedRoads = roadData.current.filter(x => x.tags && x.tags.name &&  x.tags.name === startingBuilding.tags["addr:street"]);
@@ -310,10 +377,18 @@ export default function Leaflet() {
       if (startingBuildingAssociatedRoads.length > 0 && destinationBuildingAssociatedRoads.length > 0) {
         const startingBuildingRoadPoints = startingBuildingAssociatedRoads.reduce((arr: LatLngQueryWithRoad[], road: Element) => [...arr, ...road.geometry.map(geo => { return { ...geo, roadId: road.id }})], []);
         const destinationBuildingRoadPoints = destinationBuildingAssociatedRoads.reduce((arr: LatLngQueryWithRoad[], road: Element) => [...arr, ...road.geometry.map(geo => { return { ...geo, roadId: road.id }})], []);
-        const closestStartingBuildingPoints = findClosestLine(startingBuilding.center, removeDuplicateLatLngQueryWithRoad(startingBuildingRoadPoints)) 
-        const closestDestinationBuildingPoints = findClosestLine(destinationBuilding.center, removeDuplicateLatLngQueryWithRoad(destinationBuildingRoadPoints)) 
+        
+        const closestStartingBuildingPoint = findClosestLine(startingBuilding.center, removeDuplicateLatLngQueryWithRoad(startingBuildingRoadPoints)) 
+        const closestDestinationBuildingPoint = findClosestLine(destinationBuilding.center, removeDuplicateLatLngQueryWithRoad(destinationBuildingRoadPoints)) 
+        
+        const closestStartingNode = findClosestCoordinate(closestStartingBuildingPoint, removeDuplicateLatLngQueryWithRoad(startingBuildingRoadPoints));
+        const closestDestinationNode = findClosestCoordinate(closestDestinationBuildingPoint, removeDuplicateLatLngQueryWithRoad(destinationBuildingRoadPoints));
+
+        const routeNodes = searchForShortestPath(closestStartingNode, closestDestinationNode);
+        const route = removeDuplicateLatLngQueryWithRoad([closestStartingBuildingPoint, ...routeNodes, closestDestinationBuildingPoint]);
+        setRenderedRoute(route);
         setRenderedCircles((prevRenderedCircles: LatLngQueryWithRoad[]) => {
-          return [...prevRenderedCircles, closestStartingBuildingPoints, closestDestinationBuildingPoints];
+          return [...prevRenderedCircles, closestStartingBuildingPoint, closestDestinationBuildingPoint];
         })
       }
     }
@@ -345,6 +420,11 @@ export default function Leaflet() {
         {renderedBuildings.map((building, i) => (
           <Building key={building.id} building={building} startingBuilding={startingBuilding} destinationBuilding={destinationBuilding} setStartingBuilding={setStartingBuilding} setDestinationBuilding={setDestinationBuilding} />
         ))}
+
+
+        {renderedRoute.length > 0 && 
+          <Polyline positions={renderedRoute.map(x => { return { lat: x.lat, lng: x.lon } })} color="#b3daff" fillOpacity={1} weight={3}></Polyline>
+        }
 
         {renderedCircles.map((position, i) => (
           // @ts-ignore
