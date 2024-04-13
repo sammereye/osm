@@ -1,4 +1,4 @@
-import { Element, ElementWithWeight, LatLngQuery, LatLngQueryWithRoad, OverpassQuery } from "@/models/OverpassQuery";
+import { Element, ElementWithCenter, ElementWithWeight, LatLngQuery, LatLngQueryWithRoad, OverpassQuery } from "@/models/OverpassQuery";
 import leaflet, { LatLngExpression, Map } from "leaflet";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Circle, MapContainer, Polygon, Polyline, TileLayer } from "react-leaflet";
@@ -23,9 +23,9 @@ export default function Leaflet() {
   const [renderedBuildings, setRenderedBuildings] = useState<Element[]>([]);
   const [renderedWaterways, setRenderedWaterways] = useState<Element[]>([]);
   const [renderedGrassland, setRenderedGrassland] = useState<Element[]>([]);
-  const [renderedCircles, setRenderedCircles] = useState<LatLngQuery[]>([]);
-  const [startingBuilding, setStartingBuilding] = useState<Element | null>(null);
-  const [destinationBuilding, setDestinationBuilding] = useState<Element | null>(null);
+  const [renderedCircles, setRenderedCircles] = useState<LatLngQueryWithRoad[]>([]);
+  const [startingBuilding, setStartingBuilding] = useState<ElementWithCenter | null>(null);
+  const [destinationBuilding, setDestinationBuilding] = useState<ElementWithCenter | null>(null);
 
   type Car = {
     id: number,
@@ -199,13 +199,13 @@ export default function Leaflet() {
   }, [map])
 
   // Function to calculate distance between two coordinates
-  function calculateDistance(coord1: LatLngQuery, coord2: LatLngQuery) {
+  function calculateDistance(coord1: LatLngQueryWithRoad, coord2: LatLngQueryWithRoad) {
     const dx = coord1.lon - coord2.lon;
     const dy = coord1.lat - coord2.lat;
     return Math.sqrt(dx * dx + dy * dy); // Euclidean distance
   }
 
-  function findClosestCoordinate(targetCoord: LatLngQuery, coordArray: LatLngQuery[]): LatLngQuery {
+  function findClosestCoordinate(targetCoord: LatLngQueryWithRoad, coordArray: LatLngQueryWithRoad[]): LatLngQueryWithRoad {
     // Error handling: Ensure valid input
     if (!Array.isArray(coordArray) || coordArray.length === 0) {
       throw new Error("Invalid coordArray: must be a non-empty array");
@@ -226,7 +226,7 @@ export default function Leaflet() {
     return closestCoord || coordArray[0];
   }
 
-  function findClosestPointOnLine(targetCoord: LatLngQuery, lineSegment: LatLngQuery[]) {
+  function findClosestPointOnLine(targetCoord: LatLngQueryWithRoad, lineSegment: LatLngQueryWithRoad[]): LatLngQueryWithRoad {
     // Destructure coordinates for clarity
     const { lat: lat1, lon: lon1} = lineSegment[0];
     const { lat: lat2, lon: lon2} = lineSegment[1];
@@ -251,21 +251,30 @@ export default function Leaflet() {
     const closestLat = lat1 + t * dlat;
     const closestLon = lon1 + t * dlon;
   
-    return {lat: closestLat, lon: closestLon};
+    return {lat: closestLat, lon: closestLon, roadId: targetCoord.roadId};
   }
 
-  function findClosestLine(targetCoord: LatLngQuery, coordArray: LatLngQuery[]): LatLngQuery[] {
+  function findClosestLine(targetCoord: LatLngQueryWithRoad, coordArray: LatLngQueryWithRoad[]): LatLngQueryWithRoad {
     const closestCoordinate = findClosestCoordinate(targetCoord, coordArray);
     const closestCoordinateIndex = coordArray.findIndex(coord => coord.lat === closestCoordinate.lat && coord.lon === closestCoordinate.lon);
 
+    let point1: LatLngQueryWithRoad = closestCoordinate;
+    let point2: LatLngQueryWithRoad = closestCoordinate;
+    let point3: LatLngQueryWithRoad = closestCoordinate;
+
     if (closestCoordinateIndex === 0) {
-      return [coordArray[0], coordArray[1]]
+      point1 = coordArray[0];
+      point2 = coordArray[1];
     } else if (closestCoordinateIndex === coordArray.length - 1) {
-      return [coordArray[coordArray.length - 2], coordArray[coordArray.length - 1]]
+      point1 = coordArray[coordArray.length - 2];
+      point2 = coordArray[coordArray.length - 1];
+    } else {
+      point1 = coordArray[closestCoordinateIndex - 1];
+      point3 = coordArray[closestCoordinateIndex + 1];
     }
 
-    const closestPointOnLine1 = findClosestPointOnLine(targetCoord, [coordArray[closestCoordinateIndex - 1], closestCoordinate]);
-    const closestPointOnLine2 = findClosestPointOnLine(targetCoord, [coordArray[closestCoordinateIndex + 1], closestCoordinate]);
+    const closestPointOnLine1 = findClosestPointOnLine(targetCoord, [point1, point2]);
+    const closestPointOnLine2 = findClosestPointOnLine(targetCoord, [point3, point2]);
 
     const distanceOnLine1 = calculateDistance(closestPointOnLine1, targetCoord);
     const distanceOnLine2 = calculateDistance(closestPointOnLine2, targetCoord);
@@ -275,7 +284,7 @@ export default function Leaflet() {
       closestPoint = closestPointOnLine2;
     }
 
-    return [closestPoint];
+    return closestPoint;
   }
 
   function removeDuplicateLatLngQueryWithRoad(arr: LatLngQueryWithRoad[]) {
@@ -299,11 +308,12 @@ export default function Leaflet() {
       const destinationBuildingAssociatedRoads = roadData.current.filter(x => x.tags && x.tags.name &&  x.tags.name === destinationBuilding.tags["addr:street"]);
 
       if (startingBuildingAssociatedRoads.length > 0 && destinationBuildingAssociatedRoads.length > 0) {
-        const closestStartingBuildingPoints = findClosestLine(startingBuilding.geometry[0], removeDuplicateLatLngQueryWithRoad(startingBuildingAssociatedRoads.reduce((arr: LatLngQueryWithRoad[], road: Element) => [...arr, ...road.geometry.map(geo => { return { ...geo, roadId: road.id }})], []))) 
-        const closestDestinationBuildingPoints = findClosestLine(destinationBuilding.geometry[0], removeDuplicateLatLngQueryWithRoad(destinationBuildingAssociatedRoads.reduce((arr: LatLngQueryWithRoad[], road: Element) => [...arr, ...road.geometry.map(geo => { return { ...geo, roadId: road.id }})], []))) 
-        setRenderedCircles(prevRenderedCircles => {
-          const circles =  [...prevRenderedCircles, ...closestStartingBuildingPoints, ...closestDestinationBuildingPoints]
-          return circles
+        const startingBuildingRoadPoints = startingBuildingAssociatedRoads.reduce((arr: LatLngQueryWithRoad[], road: Element) => [...arr, ...road.geometry.map(geo => { return { ...geo, roadId: road.id }})], []);
+        const destinationBuildingRoadPoints = destinationBuildingAssociatedRoads.reduce((arr: LatLngQueryWithRoad[], road: Element) => [...arr, ...road.geometry.map(geo => { return { ...geo, roadId: road.id }})], []);
+        const closestStartingBuildingPoints = findClosestLine(startingBuilding.center, removeDuplicateLatLngQueryWithRoad(startingBuildingRoadPoints)) 
+        const closestDestinationBuildingPoints = findClosestLine(destinationBuilding.center, removeDuplicateLatLngQueryWithRoad(destinationBuildingRoadPoints)) 
+        setRenderedCircles((prevRenderedCircles: LatLngQueryWithRoad[]) => {
+          return [...prevRenderedCircles, closestStartingBuildingPoints, closestDestinationBuildingPoints];
         })
       }
     }

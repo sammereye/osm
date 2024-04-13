@@ -1,4 +1,4 @@
-import { LatLngBoundsExpression, LatLngExpression } from "leaflet"
+import { LatLng, LatLngBoundsExpression, LatLngExpression } from "leaflet"
 
 export interface OverpassQuery {
   version: number
@@ -23,6 +23,10 @@ export interface Element {
 
 export interface ElementWithWeight extends Element {
   weight: number
+}
+
+export interface ElementWithCenter extends Element {
+  center: LatLngQueryWithRoad
 }
 
 export interface LatLngQuery {

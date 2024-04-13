@@ -1,14 +1,14 @@
-import { Element } from "@/models/OverpassQuery"
+import { Element, ElementWithCenter } from "@/models/OverpassQuery"
 import { Dispatch, SetStateAction, useEffect, useRef } from "react";
 import { Polygon } from "react-leaflet"
 import leaflet from 'leaflet';
 
 type BuildingProps = {
   building: Element;
-  startingBuilding: Element | null;
-  destinationBuilding: Element | null;
-  setStartingBuilding: Dispatch<SetStateAction<Element | null>>;
-  setDestinationBuilding: Dispatch<SetStateAction<Element | null>>;
+  startingBuilding: ElementWithCenter | null;
+  destinationBuilding: ElementWithCenter | null;
+  setStartingBuilding: Dispatch<SetStateAction<ElementWithCenter | null>>;
+  setDestinationBuilding: Dispatch<SetStateAction<ElementWithCenter | null>>;
 }
 
 export default function Building({
@@ -35,7 +35,7 @@ export default function Building({
             if (prevBuilding !== null) {
               return prevBuilding;
             } else {
-              return building;
+              return {...building, center: {lat: buildingRef.current?.getCenter().lat, lon: buildingRef.current?.getCenter().lng}} as ElementWithCenter;
             }
           });
         } else if (destinationBuilding === null) {
@@ -43,7 +43,7 @@ export default function Building({
             if (prevBuilding !== null) {
               return prevBuilding;
             } else {
-              return building;
+              return {...building, center: {lat: buildingRef.current?.getCenter().lat, lon: buildingRef.current?.getCenter().lng}} as ElementWithCenter;
             }
           });
         }
