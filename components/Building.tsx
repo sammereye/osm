@@ -23,9 +23,9 @@ export default function Building({
   useEffect(() => {
     if (buildingRef.current) {
       if (building.id === startingBuilding?.id || building.id === destinationBuilding?.id) {
-        buildingRef.current?.setStyle({ fillColor: "#4b80ea" })
+        buildingRef.current?.setStyle({ color: "#4b80ea", weight: 4 })
       } else {
-        buildingRef.current?.setStyle({ fillColor: "#dfe2e8" })
+        buildingRef.current?.setStyle({ color: "#d2d5df", weight: 1 })
       }
 
       buildingRef.current.clearAllEventListeners();

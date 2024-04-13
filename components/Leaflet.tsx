@@ -1,5 +1,5 @@
 import { Element, ElementWithCenter, ElementWithWeight, LatLngQuery, LatLngQueryWithRoad, OverpassQuery } from "@/models/OverpassQuery";
-import leaflet, { LatLngExpression, Map } from "leaflet";
+import leaflet, { LatLngBounds, LatLngExpression, Map } from "leaflet";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Circle, MapContainer, Polygon, Polyline, TileLayer } from "react-leaflet";
 import Car from "./Car";
@@ -73,120 +73,133 @@ export default function Leaflet() {
     return weight;
   }
 
+  function getMapTiles(bounds: leaflet.LatLngBounds): LatLngQuery[][] {
+    const tileSize = 0.0025;
+    const north = bounds.getNorth();
+    const east = bounds.getEast();
+    const south = bounds.getSouth();
+    const west = bounds.getWest();
+    const startingNorth = (north - (north % .0025));
+    const startingWest = (west - (west % .0025));
+    console.log(startingNorth, startingWest);
+    return [];
+  }
+
   useEffect(() => {
     const loadMap = () => {
       if (map) {
         const bounds = map.getBounds();
-        const bottomLeftLat = bounds.getSouthWest().lat;
-        const bottomLeftLng = bounds.getSouthWest().lng;
-        const topRightLat = bounds.getNorthEast().lat;
-        const topRightLng = bounds.getNorthEast().lng;
+        const mapTiles: LatLngQuery[][] = getMapTiles(bounds);
+        // const bottomLeftLat = bounds.getSouthWest().lat;
+        // const bottomLeftLng = bounds.getSouthWest().lng;
+        // const topRightLat = bounds.getNorthEast().lat;
+        // const topRightLng = bounds.getNorthEast().lng;
   
-        const bottomLeftLatStreet = bottomLeftLat - 0.001;
-        const bottomLeftLngStreet = bottomLeftLng + 0.001
-        const topRightLatStreet = topRightLat + 0.001;
-        const topRightLngStreet = topRightLng - 0.001;
+        // const bottomLeftLatStreet = bottomLeftLat - 0.001;
+        // const bottomLeftLngStreet = bottomLeftLng + 0.001
+        // const topRightLatStreet = topRightLat + 0.001;
+        // const topRightLngStreet = topRightLng - 0.001;
   
-        if (currentBounds.current?.getCenter().lat !== bounds.getCenter().lat || currentBounds.current?.getCenter().lng !== bounds.getCenter().lng) {
-          currentBounds.current = bounds;
-          fetch(
-            "https://overpass-api.de/api/interpreter",
-            {
-              method: "POST",
-              body: "data="+ encodeURIComponent(`
-                [out:json][timeout:25];
-                (
-                  nwr["highway"="motorway"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["highway"="trunk"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["highway"="primary"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["highway"="secondary"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["highway"="tertiary"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["highway"="unclassified"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        // if (currentBounds.current?.getCenter().lat !== bounds.getCenter().lat || currentBounds.current?.getCenter().lng !== bounds.getCenter().lng) {
+        //   currentBounds.current = bounds;
+        //   fetch(
+        //     "https://overpass-api.de/api/interpreter",
+        //     {
+        //       method: "POST",
+        //       body: "data="+ encodeURIComponent(`
+        //         [out:json][timeout:25];
+        //         (
+        //           nwr["highway"="motorway"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["highway"="trunk"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["highway"="primary"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["highway"="secondary"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["highway"="tertiary"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["highway"="unclassified"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
                   
-                  nwr["highway"="motorway_link"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["highway"="trunk_link"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["highway"="primary_link"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["highway"="secondary_link"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["highway"="tertiary_link"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["highway"="motorway_link"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["highway"="trunk_link"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["highway"="primary_link"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["highway"="secondary_link"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["highway"="tertiary_link"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
                   
-                  nwr["highway"="living_street"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["highway"="service"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["highway"="residential"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["highway"="track"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["highway"="raceway"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["highway"="road"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["highway"="living_street"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["highway"="service"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["highway"="residential"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["highway"="track"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["highway"="raceway"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["highway"="road"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
 
-                  nwr["surface"="grass"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["landuse"="grass"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["waterway"="stream"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
-                  nwr["building"="yes"](${bottomLeftLat},${bottomLeftLng},${topRightLat},${topRightLng});
-                );
-                out geom;
-              `)
-            },
-          )
-          .then((data) => data.json())
-          .then((results: OverpassQuery) => {
-            if (results && results.elements && results.elements.length > 0) {
-              const roadResults = results.elements.filter(e => e.tags && e.tags.highway && e.geometry && e.nodes);
-              setRenderedRoads(prevRenderedRoads => {
-                const roads: ElementWithWeight[] = [];
-                roadResults.forEach(roadElement => {
-                  roads.push({
-                    ...roadElement,
-                    weight: getRoadWeight(roadElement)
-                  });
-                  if (roadData.current.filter(x => x.id === roadElement.id).length === 0) {
-                    roadData.current.push(roadElement);
-                  }
-                });
+        //           nwr["surface"="grass"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["landuse"="grass"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["waterway"="stream"](${bottomLeftLatStreet},${bottomLeftLngStreet},${topRightLatStreet},${topRightLngStreet});
+        //           nwr["building"="yes"](${bottomLeftLat},${bottomLeftLng},${topRightLat},${topRightLng});
+        //         );
+        //         out geom;
+        //       `)
+        //     },
+        //   )
+        //   .then((data) => data.json())
+        //   .then((results: OverpassQuery) => {
+        //     if (results && results.elements && results.elements.length > 0) {
+        //       const roadResults = results.elements.filter(e => e.tags && e.tags.highway && e.geometry && e.nodes);
+        //       setRenderedRoads(prevRenderedRoads => {
+        //         const roads: ElementWithWeight[] = [];
+        //         roadResults.forEach(roadElement => {
+        //           roads.push({
+        //             ...roadElement,
+        //             weight: getRoadWeight(roadElement)
+        //           });
+        //           if (roadData.current.filter(x => x.id === roadElement.id).length === 0) {
+        //             roadData.current.push(roadElement);
+        //           }
+        //         });
 
-                return roads;
-              })
+        //         return roads;
+        //       })
 
-              const waterwayResults = results.elements.filter(e => e.tags && e.tags.waterway && e.geometry && e.nodes);
-              setRenderedWaterways(prevRenderedWaterways => {
-                const waterways: Element[] = [];
-                waterwayResults.forEach(waterwayElement => {
-                  waterways.push(waterwayElement);
-                  if (waterwayData.current.filter(x => x.id === waterwayElement.id).length === 0) {
-                    waterwayData.current.push(waterwayElement);
-                  }
-                });
+        //       const waterwayResults = results.elements.filter(e => e.tags && e.tags.waterway && e.geometry && e.nodes);
+        //       setRenderedWaterways(prevRenderedWaterways => {
+        //         const waterways: Element[] = [];
+        //         waterwayResults.forEach(waterwayElement => {
+        //           waterways.push(waterwayElement);
+        //           if (waterwayData.current.filter(x => x.id === waterwayElement.id).length === 0) {
+        //             waterwayData.current.push(waterwayElement);
+        //           }
+        //         });
 
-                return waterways;
-              })
+        //         return waterways;
+        //       })
 
-              const grasslandResults = results.elements.filter(e => e.tags && ((e.tags.landuse && e.tags.landuse === 'grass') || (e.tags.surface && e.tags.surface === 'grass')) && e.geometry && e.nodes);
-              setRenderedGrassland(prevRenderedGrassland => {
-                const grassland: Element[] = [];
-                grasslandResults.forEach(grasslandElement => {
-                  grassland.push(grasslandElement);
-                  if (grasslandData.current.filter(x => x.id === grasslandElement.id).length === 0) {
-                    grasslandData.current.push(grasslandElement);
-                  }
-                });
+        //       const grasslandResults = results.elements.filter(e => e.tags && ((e.tags.landuse && e.tags.landuse === 'grass') || (e.tags.surface && e.tags.surface === 'grass')) && e.geometry && e.nodes);
+        //       setRenderedGrassland(prevRenderedGrassland => {
+        //         const grassland: Element[] = [];
+        //         grasslandResults.forEach(grasslandElement => {
+        //           grassland.push(grasslandElement);
+        //           if (grasslandData.current.filter(x => x.id === grasslandElement.id).length === 0) {
+        //             grasslandData.current.push(grasslandElement);
+        //           }
+        //         });
 
-                return grassland;
-              })
+        //         return grassland;
+        //       })
       
-              const buildingResults = results.elements.filter(e => e.tags && e.tags.building && e.tags.building === 'yes' && e.geometry && e.geometry.length > 3);
+        //       const buildingResults = results.elements.filter(e => e.tags && e.tags.building && e.tags.building === 'yes' && e.geometry && e.geometry.length > 3);
               
-              setRenderedBuildings(prevRenderedBuildings => {
-                const buildings: Element[] = [];
-                buildingResults.forEach(buildingElement => {
-                  buildings.push(buildingElement)
-                  if (buildingData.current.filter(x => x.id === buildingElement.id).length === 0) {
-                    // buildingElement.geometry = simplifyBuilding(buildingElement.geometry)
-                    buildingData.current.push(buildingElement)
-                  }
-                });
+        //       setRenderedBuildings(prevRenderedBuildings => {
+        //         const buildings: Element[] = [];
+        //         buildingResults.forEach(buildingElement => {
+        //           buildings.push(buildingElement)
+        //           if (buildingData.current.filter(x => x.id === buildingElement.id).length === 0) {
+        //             // buildingElement.geometry = simplifyBuilding(buildingElement.geometry)
+        //             buildingData.current.push(buildingElement)
+        //           }
+        //         });
 
-                return buildings;
-              })
-            }
-          });
-        }
+        //         return buildings;
+        //       })
+        //     }
+        //   });
+        // }
       }
     }
 
@@ -385,6 +398,8 @@ export default function Leaflet() {
         const closestDestinationNode = findClosestCoordinate(closestDestinationBuildingPoint, removeDuplicateLatLngQueryWithRoad(destinationBuildingRoadPoints));
 
         const routeNodes = searchForShortestPath(closestStartingNode, closestDestinationNode);
+        routeNodes.unshift();
+        routeNodes.pop();
         const route = removeDuplicateLatLngQueryWithRoad([closestStartingBuildingPoint, ...routeNodes, closestDestinationBuildingPoint]);
         setRenderedRoute(route);
         setRenderedCircles((prevRenderedCircles: LatLngQueryWithRoad[]) => {
@@ -423,12 +438,12 @@ export default function Leaflet() {
 
 
         {renderedRoute.length > 0 && 
-          <Polyline positions={renderedRoute.map(x => { return { lat: x.lat, lng: x.lon } })} color="#b3daff" fillOpacity={1} weight={3}></Polyline>
+          <Polyline positions={renderedRoute.map(x => { return { lat: x.lat, lng: x.lon } })} color="#4b80ea" fillOpacity={1} weight={5}></Polyline>
         }
 
         {renderedCircles.map((position, i) => (
           // @ts-ignore
-          <Circle key={`${position.lat}-${position.lon}`} center={position} radius={5} fillColor="#4b80ea" />
+          <Circle key={`${position.lat}-${position.lon}`} center={position} radius={5} color="#4b80ea" weight={4} fillColor="#eaedf1" fillOpacity={1} />
         ))}
 
         {false && cars.map((car) => (
