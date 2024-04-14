@@ -80,8 +80,8 @@ export default function Leaflet() {
     let eastEdge = bounds.getEast();
     let southEdge = bounds.getSouth();
 
-    let north = (northEdge - (northEdge % tileSize));
-    let west = (westEdge - (westEdge % tileSize));
+    let north = (northEdge + (northEdge % tileSize));
+    let west = (westEdge + (westEdge % tileSize));
 
     const northSections: number[] = [north];
     while (north > southEdge) {
