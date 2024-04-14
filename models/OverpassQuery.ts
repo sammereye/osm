@@ -69,3 +69,10 @@ export interface Tags {
   landuse?: string
   surface?: string
 }
+
+export interface Bounds {
+  north: number;
+  east: number;
+  south: number;
+  west: number;
+}
