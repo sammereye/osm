@@ -1,6 +1,7 @@
 import { LatLng, LatLngBoundsExpression, LatLngExpression } from "leaflet"
 
 export interface OverpassQuery {
+  id?: string;
   version: number
   generator: string
   osm3s: Osm3s
@@ -13,6 +14,7 @@ export interface Osm3s {
 }
 
 export interface Element {
+  tileId?: string;
   type: string
   id: number
   bounds: LatLngBoundsExpression
