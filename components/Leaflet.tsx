@@ -14,13 +14,13 @@ export default function Leaflet() {
   const grasslandData = useRef<Element[]>([]);
   const currentBounds = useRef<leaflet.LatLngBounds | null>(null);
   const renderedTiles = useRef<Bounds[]>([]);
+  const tileData = useRef<OverpassQuery[]>([]);
 
   const [map, setMap] = useState<Map>();
   const mapRef = useCallback((mapNode: Map) => {
     setMap(mapNode)
   }, []);
   
-  const [tileData, setTileData] = useState<OverpassQuery[]>([]);
   const [renderedRoads, setRenderedRoads] = useState<ElementWithWeight[]>([]);
   const [renderedBuildings, setRenderedBuildings] = useState<Element[]>([]);
   const [renderedWaterways, setRenderedWaterways] = useState<Element[]>([]);
@@ -131,11 +131,14 @@ export default function Leaflet() {
           }
         });
         renderedTiles.current = mapTiles;
+
+        console.log(tileData.current.length)
         
         for (let i = 0; i < tilesToRender.length; i++) {
           const tile = tilesToRender[i];
-          const existingData = tileData.filter(x => x.id === `${tile.north},${tile.west}`)[0];
+          const existingData = tileData.current.filter(x => x.id === `${tile.north},${tile.west}`)[0];
           if (existingData) {
+            console.log(existingData);
             renderResults(existingData);
           } else {
             fetch(
@@ -177,11 +180,8 @@ export default function Leaflet() {
             .then((data) => data.json())
             .then((results: OverpassQuery) => {
               if (results && results.elements && results.elements.length > 0) {
-                setTileData(prevTitleData => {
-                  results.id = `${tile.north},${tile.east}`;
-                  return [...prevTitleData, results];
-                })
-                
+                results.id = `${tile.north},${tile.west}`;
+                tileData.current.push(results);
                 renderResults(results);
               }
             });
@@ -197,7 +197,7 @@ export default function Leaflet() {
         loadMap()
       });
     }
-  }, [map])
+  }, [map, tileData])
 
   function removeOutOfViewElements(renderedTiles: Bounds[]) {
     const tileIds = renderedTiles.map(tile => `${tile.north},${tile.west}`);
@@ -478,7 +478,7 @@ export default function Leaflet() {
 
   return (
     <div>
-      <MapContainer ref={mapRef} className="w-screen h-screen" center={position} zoom={18} zoomControl={false} minZoom={18} maxZoom={18}>
+      <MapContainer ref={mapRef} className="w-screen h-screen" center={position} zoom={17} zoomControl={false} touchZoom={false} minZoom={17} maxZoom={17}>
       {/* <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
