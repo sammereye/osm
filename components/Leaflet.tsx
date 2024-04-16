@@ -1,7 +1,7 @@
 import { Bounds, Element, ElementWithCenter, ElementWithWeight, LatLngQuery, LatLngQueryWithRoad, OverpassQuery } from "@/models/OverpassQuery";
 import leaflet, { LatLngBounds, LatLngExpression, Map } from "leaflet";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Circle, MapContainer, Polygon, Polyline, TileLayer } from "react-leaflet";
+import { Circle, MapContainer, Pane, Polygon, Polyline, TileLayer } from "react-leaflet";
 import Car from "./Car";
 import Building from "./Building";
 
@@ -12,9 +12,9 @@ export default function Leaflet() {
   const buildingData = useRef<Element[]>([]);
   const waterwayData = useRef<Element[]>([]);
   const grasslandData = useRef<Element[]>([]);
-  const currentBounds = useRef<leaflet.LatLngBounds | null>(null);
   const renderedTiles = useRef<Bounds[]>([]);
   const tileData = useRef<OverpassQuery[]>([]);
+  const renderedRoute = useRef<LatLngQueryWithRoad[]>([]);
 
   const [map, setMap] = useState<Map>();
   const mapRef = useCallback((mapNode: Map) => {
@@ -26,7 +26,6 @@ export default function Leaflet() {
   const [renderedWaterways, setRenderedWaterways] = useState<Element[]>([]);
   const [renderedGrassland, setRenderedGrassland] = useState<Element[]>([]);
   const [renderedCircles, setRenderedCircles] = useState<LatLngQueryWithRoad[]>([]);
-  const [renderedRoute, setRenderedRoute] = useState<LatLngQueryWithRoad[]>([]);
   const [startingBuilding, setStartingBuilding] = useState<ElementWithCenter | null>(null);
   const [destinationBuilding, setDestinationBuilding] = useState<ElementWithCenter | null>(null);
 
@@ -447,7 +446,7 @@ export default function Leaflet() {
         routeNodes.unshift();
         routeNodes.pop();
         const route = removeDuplicateLatLngQueryWithRoad([closestStartingBuildingPoint, ...routeNodes, closestDestinationBuildingPoint]);
-        setRenderedRoute(route);
+        renderedRoute.current = route;
         setRenderedCircles((prevRenderedCircles: LatLngQueryWithRoad[]) => {
           return [...prevRenderedCircles, closestStartingBuildingPoint, closestDestinationBuildingPoint];
         })
@@ -464,34 +463,45 @@ export default function Leaflet() {
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       /> */}
 
-        {renderedGrassland.map((grassland, i) => (
-          // @ts-ignore
-          <Polygon key={grassland.id} positions={grassland.geometry} fillColor="#a7dfb6" fillOpacity={1} stroke={false}></Polygon>
-        ))}
+        <Pane name="pane-grassland" style={{ zIndex: 500 }}>
+          {renderedGrassland.map((grassland, i) => (
+            // @ts-ignore
+            <Polygon key={grassland.id} positions={grassland.geometry} fillColor="#a7dfb6" fillOpacity={1} stroke={false}></Polygon>
+          ))}
+        </Pane>
 
-        {renderedWaterways.map((waterway, i) => (
-          // @ts-ignore
-          <Polyline key={waterway.id} positions={waterway.geometry} color="#b3daff" fillOpacity={1} weight={7}></Polyline>
-        ))}
+        <Pane name="pane-waterways" style={{ zIndex: 501 }}>
+          {renderedWaterways.map((waterway, i) => (
+            // @ts-ignore
+            <Polyline key={waterway.id} positions={waterway.geometry} color="#b3daff" fillOpacity={1} weight={7}></Polyline>
+          ))}
+        </Pane>
 
-        {renderedRoads.map((road, i) => (
-          // @ts-ignore
-          <Polyline key={road.id} positions={road.geometry} color="#ffffff" fillOpacity={1} weight={road.weight}></Polyline>
-        ))}
+        <Pane name="pane-roads" style={{ zIndex: 502 }}>
+          {renderedRoads.map((road, i) => (
+            // @ts-ignore
+            <Polyline key={road.id} positions={road.geometry} color="#ffffff" fillOpacity={1} weight={road.weight}></Polyline>
+          ))}
+        </Pane>
 
-        {renderedBuildings.map((building, i) => (
-          <Building key={building.id} building={building} startingBuilding={startingBuilding} destinationBuilding={destinationBuilding} setStartingBuilding={setStartingBuilding} setDestinationBuilding={setDestinationBuilding} />
-        ))}
+        <Pane name="pane-building" style={{ zIndex: 503 }}>
+          {renderedBuildings.map((building, i) => (
+            <Building key={building.id} building={building} startingBuilding={startingBuilding} destinationBuilding={destinationBuilding} setStartingBuilding={setStartingBuilding} setDestinationBuilding={setDestinationBuilding} />
+          ))}
+        </Pane>
 
-
-        {renderedRoute.length > 0 && 
-          <Polyline positions={renderedRoute.map(x => { return { lat: x.lat, lng: x.lon } })} color="#4b80ea" fillOpacity={1} weight={5}></Polyline>
-        }
-
-        {renderedCircles.map((position, i) => (
-          // @ts-ignore
-          <Circle key={`${position.lat}-${position.lon}`} center={position} radius={5} color="#4b80ea" weight={4} fillColor="#eaedf1" fillOpacity={1} />
-        ))}
+        <Pane name="pane-route" style={{ zIndex: 504 }}>
+          {renderedRoute.current.length > 0 && 
+            <Polyline positions={renderedRoute.current.map(x => { return { lat: x.lat, lng: x.lon } })} color="#4b80ea" fillOpacity={1} weight={5}></Polyline>
+          }
+        </Pane>
+          
+        <Pane name="pane-circles" style={{ zIndex: 505 }}>
+          {renderedCircles.map((position, i) => (
+            // @ts-ignore
+            <Circle key={`${position.lat}-${position.lon}`} center={position} radius={5} color="#4b80ea" weight={4} fillColor="#eaedf1" fillOpacity={1} />
+          ))}
+        </Pane>
 
         {false && cars.map((car) => (
           <Car key={car.id} roads={roadData.current} startingNode={car.startingNode} />
