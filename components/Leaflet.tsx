@@ -148,30 +148,12 @@ export default function Leaflet() {
                 body: "data="+ encodeURIComponent(`
                   [out:json][timeout:25];
                   (
-                    nwr["highway"="motorway"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["highway"="trunk"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["highway"="primary"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["highway"="secondary"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["highway"="tertiary"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["highway"="unclassified"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    
-                    nwr["highway"="motorway_link"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["highway"="trunk_link"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["highway"="primary_link"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["highway"="secondary_link"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["highway"="tertiary_link"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    
-                    nwr["highway"="living_street"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["highway"="service"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["highway"="residential"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["highway"="track"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["highway"="raceway"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["highway"="road"](${tile.south},${tile.west},${tile.north},${tile.east});
-  
-                    nwr["surface"="grass"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["landuse"="grass"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["waterway"="stream"](${tile.south},${tile.west},${tile.north},${tile.east});
-                    nwr["building"="yes"](${tile.south},${tile.west},${tile.north},${tile.east});
+                    way(${tile.south},${tile.west},${tile.north},${tile.east})["highway"~"motorway|trunk|primary|secondary|tertiary|unclassified|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link|living_street|service|residential|track|raceway|road"];
+                    way(${tile.south},${tile.west},${tile.north},${tile.east})["surface"="grass"];
+                    way(${tile.south},${tile.west},${tile.north},${tile.east})["landuse"="grass"];
+                    way(${tile.south},${tile.west},${tile.north},${tile.east})["leisure"="park"];
+                    way(${tile.south},${tile.west},${tile.north},${tile.east})["waterway"="stream"];
+                    way(${tile.south},${tile.west},${tile.north},${tile.east})["building"="yes"]["addr:street"];
                   );
                   out geom;
                 `)
@@ -244,7 +226,7 @@ export default function Leaflet() {
       return [...prevRenderedWaterways, ...waterways];
     })
 
-    const grasslandResults = results.elements.filter(e => e.tags && ((e.tags.landuse && e.tags.landuse === 'grass') || (e.tags.surface && e.tags.surface === 'grass')) && e.geometry && e.nodes);
+    const grasslandResults = results.elements.filter(e => e.tags && ((e.tags.landuse && e.tags.landuse === 'grass') || (e.tags.surface && e.tags.surface === 'grass') || (e.tags.leisure && e.tags.leisure === 'park')) && e.geometry && e.nodes);
     setRenderedGrassland(prevRenderedGrassland => {
       const grassland: Element[] = [];
       grasslandResults.forEach(grasslandElement => {

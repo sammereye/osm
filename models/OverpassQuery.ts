@@ -70,6 +70,7 @@ export interface Tags {
   waterway?: string
   landuse?: string
   surface?: string
+  leisure?: string
 }
 
 export interface Bounds {
