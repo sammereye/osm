@@ -437,7 +437,7 @@ export default function Leaflet() {
         if (openList.filter(x => x.lat === neighborNode.lat && x.lon === neighborNode.lon).length === 0) {
           neighborNode.h = heuristic(neighborNode, destinationPoint);
           neighborNode.parent = currentNode;
-          neighborNode.g = (currentNode.g ?? 999999) + 1;
+          neighborNode.g = heuristic(currentNode, neighborNode);
           neighborNode.f = neighborNode.g + neighborNode.h;
           neighborNode.debug = "F: " + neighborNode.f + " G: " + neighborNode.g + " H: " + neighborNode.h;
           openList.push(neighborNode);
@@ -478,7 +478,7 @@ export default function Leaflet() {
 
   return (
     <div>
-      <MapContainer ref={mapRef} className="w-screen h-screen" center={position} zoom={17} zoomControl={false} touchZoom={false} minZoom={17} maxZoom={17}>
+      <MapContainer ref={mapRef} className="w-screen h-screen" center={position} zoom={17} zoomControl={false} touchZoom={false} minZoom={17} maxZoom={17} preferCanvas>
       {/* <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
