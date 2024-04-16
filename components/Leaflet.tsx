@@ -399,6 +399,9 @@ export default function Leaflet() {
           curr = curr.parent;
         }
 
+        console.log(currentNode);
+        console.log(closedList);
+
         return path.reverse();
       }
 
@@ -419,7 +422,8 @@ export default function Leaflet() {
         if (openList.filter(x => x.lat === neighborNode.lat && x.lon === neighborNode.lon).length === 0) {
           neighborNode.h = heuristic(neighborNode, destinationPoint);
           neighborNode.parent = currentNode;
-          neighborNode.g = heuristic(currentNode, neighborNode);
+          const currentNodeG = currentNode.g ? currentNode.g : 0;
+          neighborNode.g = currentNodeG + heuristic(currentNode, neighborNode);
           neighborNode.f = neighborNode.g + neighborNode.h;
           neighborNode.debug = "F: " + neighborNode.f + " G: " + neighborNode.g + " H: " + neighborNode.h;
           openList.push(neighborNode);
