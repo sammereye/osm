@@ -116,6 +116,76 @@ export default function Leaflet() {
   }
 
   useEffect(() => {
+    function renderResults(results: OverpassQuery) {
+      const roadResults = results.elements.filter(e => e.tags && e.tags.highway && e.geometry && e.nodes);
+      setRenderedRoads(prevRenderedRoads => {
+        const roads: ElementWithWeight[] = [];
+        roadResults.forEach(roadElement => {
+          roadElement.tileId = results.id;
+          if (prevRenderedRoads.filter(x => x.id === roadElement.id).length === 0) {
+            roads.push({
+              ...roadElement,
+              weight: getRoadWeight(roadElement)
+            });
+          }
+          if (roadData.current.filter(x => x.id === roadElement.id).length === 0) {
+            roadData.current.push(roadElement);
+          }
+        });
+  
+        return [...prevRenderedRoads, ...roads];
+      })
+  
+      const waterwayResults = results.elements.filter(e => e.tags && e.tags.waterway && e.geometry && e.nodes);
+      setRenderedWaterways(prevRenderedWaterways => {
+        const waterways: Element[] = [];
+        waterwayResults.forEach(waterwayElement => {
+          waterwayElement.tileId = results.id;
+          if (prevRenderedWaterways.filter(x => x.id === waterwayElement.id).length === 0) {
+            waterways.push(waterwayElement);
+          }
+          if (waterwayData.current.filter(x => x.id === waterwayElement.id).length === 0) {
+            waterwayData.current.push(waterwayElement);
+          }
+        });
+  
+        return [...prevRenderedWaterways, ...waterways];
+      })
+  
+      const grasslandResults = results.elements.filter(e => e.tags && ((e.tags.landuse && e.tags.landuse === 'grass') || (e.tags.surface && e.tags.surface === 'grass') || (e.tags.leisure && e.tags.leisure === 'park')) && e.geometry && e.nodes);
+      setRenderedGrassland(prevRenderedGrassland => {
+        const grassland: Element[] = [];
+        grasslandResults.forEach(grasslandElement => {
+          grasslandElement.tileId = results.id;
+          if (prevRenderedGrassland.filter(x => x.id === grasslandElement.id).length === 0) {
+            grassland.push(grasslandElement);
+          }
+          if (grasslandData.current.filter(x => x.id === grasslandElement.id).length === 0) {
+            grasslandData.current.push(grasslandElement);
+          }
+        });
+  
+        return [...grassland, ...prevRenderedGrassland];
+      })
+  
+      const buildingResults = results.elements.filter(e => e.tags && e.tags.building && e.tags.building === 'yes' && e.geometry && e.geometry.length >= 3);
+      
+      setRenderedBuildings(prevRenderedBuildings => {
+        const buildings: Element[] = [];
+        buildingResults.forEach(buildingElement => {
+          buildingElement.tileId = results.id;
+          if (prevRenderedBuildings.filter(x => x.id === buildingElement.id).length === 0) {
+            buildings.push(buildingElement)
+          }
+          if (buildingData.current.filter(x => x.id === buildingElement.id).length === 0) {
+            buildingData.current.push(buildingElement)
+          }
+        });
+  
+        return [...buildings, ...prevRenderedBuildings];
+      })
+    }
+
     const loadMap = () => {
       if (map) {
         const bounds = map.getBounds();
@@ -131,14 +201,11 @@ export default function Leaflet() {
           }
         });
         renderedTiles.current = mapTiles;
-
-        console.log(tileData.current.length)
         
         for (let i = 0; i < tilesToRender.length; i++) {
           const tile = tilesToRender[i];
           const existingData = tileData.current.filter(x => x.id === `${tile.north},${tile.west}`)[0];
           if (existingData) {
-            console.log(existingData);
             renderResults(existingData);
           } else {
             fetch(
@@ -190,77 +257,90 @@ export default function Leaflet() {
     setRenderedBuildings(renderedBuildings => renderedBuildings.filter(x => x.tileId && tileIds.includes(x.tileId)))
   }
 
-  function renderResults(results: OverpassQuery) {
-    const roadResults = results.elements.filter(e => e.tags && e.tags.highway && e.geometry && e.nodes);
-    setRenderedRoads(prevRenderedRoads => {
-      const roads: ElementWithWeight[] = [];
-      roadResults.forEach(roadElement => {
-        roadElement.tileId = results.id;
-        if (prevRenderedRoads.filter(x => x.id === roadElement.id).length === 0) {
-          roads.push({
-            ...roadElement,
-            weight: getRoadWeight(roadElement)
-          });
-        }
-        if (roadData.current.filter(x => x.id === roadElement.id).length === 0) {
-          roadData.current.push(roadElement);
-        }
-      });
-
-      return [...prevRenderedRoads, ...roads];
-    })
-
-    const waterwayResults = results.elements.filter(e => e.tags && e.tags.waterway && e.geometry && e.nodes);
-    setRenderedWaterways(prevRenderedWaterways => {
-      const waterways: Element[] = [];
-      waterwayResults.forEach(waterwayElement => {
-        waterwayElement.tileId = results.id;
-        if (prevRenderedWaterways.filter(x => x.id === waterwayElement.id).length === 0) {
-          waterways.push(waterwayElement);
-        }
-        if (waterwayData.current.filter(x => x.id === waterwayElement.id).length === 0) {
-          waterwayData.current.push(waterwayElement);
-        }
-      });
-
-      return [...prevRenderedWaterways, ...waterways];
-    })
-
-    const grasslandResults = results.elements.filter(e => e.tags && ((e.tags.landuse && e.tags.landuse === 'grass') || (e.tags.surface && e.tags.surface === 'grass') || (e.tags.leisure && e.tags.leisure === 'park')) && e.geometry && e.nodes);
-    setRenderedGrassland(prevRenderedGrassland => {
-      const grassland: Element[] = [];
-      grasslandResults.forEach(grasslandElement => {
-        grasslandElement.tileId = results.id;
-        if (prevRenderedGrassland.filter(x => x.id === grasslandElement.id).length === 0) {
-          grassland.push(grasslandElement);
-        }
-        if (grasslandData.current.filter(x => x.id === grasslandElement.id).length === 0) {
-          grasslandData.current.push(grasslandElement);
-        }
-      });
-
-      return [...grassland, ...prevRenderedGrassland];
-    })
-
-    const buildingResults = results.elements.filter(e => e.tags && e.tags.building && e.tags.building === 'yes' && e.geometry && e.geometry.length >= 3);
-    
-    setRenderedBuildings(prevRenderedBuildings => {
-      const buildings: Element[] = [];
-      buildingResults.forEach(buildingElement => {
-        buildingElement.tileId = results.id;
-        if (prevRenderedBuildings.filter(x => x.id === buildingElement.id).length === 0) {
-          buildings.push(buildingElement)
-        }
-        if (buildingData.current.filter(x => x.id === buildingElement.id).length === 0) {
-          buildingData.current.push(buildingElement)
-        }
-      });
-
-      return [...buildings, ...prevRenderedBuildings];
-    })
+  function removeDuplicateLatLngQueryWithRoad(arr: LatLngQueryWithRoad[]) {
+    const seenCoords = new Set();
+    const uniqueArr = [];
+  
+    for (const obj of arr) {
+      const coordKey = `${obj.lat},${obj.lon},${obj.roadId}`; // Create a combined key
+      if (!seenCoords.has(coordKey)) {
+        uniqueArr.push(obj);
+        seenCoords.add(coordKey);
+      }
+    }
+  
+    return uniqueArr;
   }
 
-  // Function to calculate distance between two coordinates
+  useEffect(() => {
+    function heuristic(position0: LatLngQueryWithRoad, position1: LatLngQueryWithRoad) {
+      let d1 = Math.abs(position1.lat - position0.lat);
+      let d2 = Math.abs(position1.lon - position0.lon);
+    
+      return d1 + d2;
+    }
+  
+    function searchForShortestPath(startPoint: LatLngQueryWithRoad, destinationPoint: LatLngQueryWithRoad): LatLngQueryWithRoad[] {
+      let openList: LatLngQueryWithRoad[] = [{
+        ...startPoint,
+        g: 0,
+        h: heuristic(startPoint, destinationPoint),
+        f: heuristic(startPoint, destinationPoint)
+       }];    
+       let closedList: LatLngQueryWithRoad[] = [];
+  
+  
+      while (openList.length > 0) {
+        let lowestIndex = -1;
+        for (let i = 0; i < openList.length; i++) {
+          if (lowestIndex === -1 || (openList[i].f ?? 999999) < (openList[lowestIndex].f ?? 999999)) {
+            lowestIndex = i;
+          }
+        }
+  
+        const currentNode = openList[lowestIndex];
+  
+        if (currentNode.lat === destinationPoint.lat && currentNode.lon === destinationPoint.lon) {
+          let curr = currentNode;
+          let path: LatLngQueryWithRoad[] = []
+          while (curr.parent) {
+            path.push(curr);
+            curr = curr.parent;
+          }
+  
+          return path.reverse();
+        }
+  
+        openList = openList.filter(x => x.lat !== currentNode.lat && x.lon !== currentNode.lon);
+        closedList.push(currentNode);
+        const roadsCurrentNodeIsOn = roadData.current.filter(x => x.geometry.filter(y => y.lat === currentNode.lat && y.lon === currentNode.lon).length > 0);
+        let neighborNodes: LatLngQueryWithRoad[] = [];
+        roadsCurrentNodeIsOn.forEach((road) => {
+          const currentNodeIndex = road.geometry.findIndex(coord => coord.lat === currentNode.lat && coord.lon === currentNode.lon);
+          neighborNodes = [...neighborNodes, {...road.geometry[currentNodeIndex + 1], roadId: road.id}, {...road.geometry[currentNodeIndex - 1], roadId: road.id}]
+        })
+  
+        neighborNodes.forEach(neighborNode => {
+          if (!neighborNode || closedList.filter(x => x.lat === neighborNode.lat && x.lon === neighborNode.lon).length > 0) {
+            return;
+          }
+  
+          if (openList.filter(x => x.lat === neighborNode.lat && x.lon === neighborNode.lon).length === 0) {
+            neighborNode.h = heuristic(neighborNode, destinationPoint);
+            neighborNode.parent = currentNode;
+            const currentNodeG = currentNode.g ? currentNode.g : 0;
+            neighborNode.g = currentNodeG + heuristic(currentNode, neighborNode);
+            neighborNode.f = neighborNode.g + neighborNode.h;
+            neighborNode.debug = "F: " + neighborNode.f + " G: " + neighborNode.g + " H: " + neighborNode.h;
+            openList.push(neighborNode);
+          }
+        })
+      }
+  
+      return [];
+    }
+
+    // Function to calculate distance between two coordinates
   function calculateDistance(coord1: LatLngQueryWithRoad, coord2: LatLngQueryWithRoad) {
     const dx = coord1.lon - coord2.lon;
     const dy = coord1.lat - coord2.lat;
@@ -348,93 +428,7 @@ export default function Leaflet() {
 
     return closestPoint;
   }
-
-  function removeDuplicateLatLngQueryWithRoad(arr: LatLngQueryWithRoad[]) {
-    const seenCoords = new Set();
-    const uniqueArr = [];
-  
-    for (const obj of arr) {
-      const coordKey = `${obj.lat},${obj.lon},${obj.roadId}`; // Create a combined key
-      if (!seenCoords.has(coordKey)) {
-        uniqueArr.push(obj);
-        seenCoords.add(coordKey);
-      }
-    }
-  
-    return uniqueArr;
-  }
-
-  function heuristic(position0: LatLngQueryWithRoad, position1: LatLngQueryWithRoad) {
-    let d1 = Math.abs(position1.lat - position0.lat);
-    let d2 = Math.abs(position1.lon - position0.lon);
-  
-    return d1 + d2;
-  }
-
-  function searchForShortestPath(startPoint: LatLngQueryWithRoad, destinationPoint: LatLngQueryWithRoad): LatLngQueryWithRoad[] {
-    let openList: LatLngQueryWithRoad[] = [{
-      ...startPoint,
-      g: 0,
-      h: heuristic(startPoint, destinationPoint),
-      f: heuristic(startPoint, destinationPoint)
-     }];    
-     let closedList: LatLngQueryWithRoad[] = [];
-
-
-    while (openList.length > 0) {
-      let lowestIndex = -1;
-      for (let i = 0; i < openList.length; i++) {
-        if (lowestIndex === -1 || (openList[i].f ?? 999999) < (openList[lowestIndex].f ?? 999999)) {
-          lowestIndex = i;
-        }
-      }
-
-      const currentNode = openList[lowestIndex];
-
-      if (currentNode.lat === destinationPoint.lat && currentNode.lon === destinationPoint.lon) {
-        let curr = currentNode;
-        let path: LatLngQueryWithRoad[] = []
-        while (curr.parent) {
-          path.push(curr);
-          curr = curr.parent;
-        }
-
-        console.log(currentNode);
-        console.log(closedList);
-
-        return path.reverse();
-      }
-
-      openList = openList.filter(x => x.lat !== currentNode.lat && x.lon !== currentNode.lon);
-      closedList.push(currentNode);
-      const roadsCurrentNodeIsOn = roadData.current.filter(x => x.geometry.filter(y => y.lat === currentNode.lat && y.lon === currentNode.lon).length > 0);
-      let neighborNodes: LatLngQueryWithRoad[] = [];
-      roadsCurrentNodeIsOn.forEach((road) => {
-        const currentNodeIndex = road.geometry.findIndex(coord => coord.lat === currentNode.lat && coord.lon === currentNode.lon);
-        neighborNodes = [...neighborNodes, {...road.geometry[currentNodeIndex + 1], roadId: road.id}, {...road.geometry[currentNodeIndex - 1], roadId: road.id}]
-      })
-
-      neighborNodes.forEach(neighborNode => {
-        if (!neighborNode || closedList.filter(x => x.lat === neighborNode.lat && x.lon === neighborNode.lon).length > 0) {
-          return;
-        }
-
-        if (openList.filter(x => x.lat === neighborNode.lat && x.lon === neighborNode.lon).length === 0) {
-          neighborNode.h = heuristic(neighborNode, destinationPoint);
-          neighborNode.parent = currentNode;
-          const currentNodeG = currentNode.g ? currentNode.g : 0;
-          neighborNode.g = currentNodeG + heuristic(currentNode, neighborNode);
-          neighborNode.f = neighborNode.g + neighborNode.h;
-          neighborNode.debug = "F: " + neighborNode.f + " G: " + neighborNode.g + " H: " + neighborNode.h;
-          openList.push(neighborNode);
-        }
-      })
-    }
-
-    return [];
-  }
-
-  useEffect(() => {
+    
     if (startingBuilding && destinationBuilding) {
       const startingBuildingAssociatedRoads = roadData.current.filter(x => x.tags && x.tags.name &&  x.tags.name === startingBuilding.tags["addr:street"]);
       const destinationBuildingAssociatedRoads = roadData.current.filter(x => x.tags && x.tags.name &&  x.tags.name === destinationBuilding.tags["addr:street"]);
