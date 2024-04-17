@@ -457,7 +457,7 @@ export default function Leaflet() {
 
   return (
     <div>
-      <MapContainer ref={mapRef} className="w-screen h-screen" center={position} zoom={17} zoomControl={false} touchZoom={false} minZoom={17} maxZoom={17} preferCanvas>
+      <MapContainer ref={mapRef} className="w-screen h-screen" center={position} zoom={18} zoomControl={false} touchZoom={false} minZoom={18} maxZoom={18} preferCanvas>
       {/* <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
