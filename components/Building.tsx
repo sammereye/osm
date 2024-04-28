@@ -11,6 +11,7 @@ type BuildingProps = {
   setSelectedBuilding: Dispatch<SetStateAction<ElementWithCenter | null>>;
   setStartingBuilding: Dispatch<SetStateAction<ElementWithCenter | null>>;
   setDestinationBuilding: Dispatch<SetStateAction<ElementWithCenter | null>>;
+  BASE_WEIGHT: number;
 }
 
 export default function Building({
@@ -20,16 +21,17 @@ export default function Building({
   destinationBuilding,
   setSelectedBuilding,
   setStartingBuilding,
-  setDestinationBuilding
+  setDestinationBuilding,
+  BASE_WEIGHT
 }: BuildingProps) {
   const buildingRef = useRef<leaflet.Polygon>(null);
 
   useEffect(() => {
     if (buildingRef.current) {
       if (building.id === selectedBuilding?.id || building.id === startingBuilding?.id || building.id === destinationBuilding?.id) {
-        buildingRef.current?.setStyle({ color: "#4b80ea", weight: 4 })
+        buildingRef.current?.setStyle({ color: "#4b80ea", weight: 4 + BASE_WEIGHT / 2 })
       } else {
-        buildingRef.current?.setStyle({ color: "#d2d5df", weight: 1 })
+        buildingRef.current?.setStyle({ color: "#d2d5df", weight: 1 + BASE_WEIGHT / 3 })
       }
 
       buildingRef.current.clearAllEventListeners();

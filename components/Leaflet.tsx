@@ -6,6 +6,7 @@ import Car from "./Car";
 import Building from "./Building";
 
 const position: leaflet.LatLngExpression = [39.80575, -86.22963]
+const BASE_WEIGHT = 5;
 
 export default function Leaflet() {
   const roadData = useRef<Element[]>([]);
@@ -46,8 +47,7 @@ export default function Leaflet() {
   }))
 
   function getRoadWeight(road: Element): number {
-    const base_weight = 5;
-    let weight = base_weight;
+    let weight = BASE_WEIGHT;
 
     switch (road?.tags.highway) {
       case 'motorway':
@@ -576,7 +576,7 @@ export default function Leaflet() {
               <Pane name="pane-waterways" style={{ zIndex: 501 }}>
                 {renderedWaterways.map((waterway, i) => (
                   // @ts-ignore
-                  <Polyline key={waterway.id} positions={waterway.geometry} color="#b3daff" fillOpacity={1} weight={7}></Polyline>
+                  <Polyline key={waterway.id} positions={waterway.geometry} color="#b3daff" fillOpacity={1} weight={BASE_WEIGHT + 7}></Polyline>
                 ))}
               </Pane>
 
@@ -589,20 +589,20 @@ export default function Leaflet() {
 
               <Pane name="pane-building" style={{ zIndex: 503 }}>
                 {renderedBuildings.map((building, i) => (
-                  <Building key={building.id} building={building} selectedBuilding={selectedBuilding} startingBuilding={startingBuilding} destinationBuilding={destinationBuilding} setStartingBuilding={setStartingBuilding} setDestinationBuilding={setDestinationBuilding} setSelectedBuilding={setSelectedBuilding} />
+                  <Building key={building.id} building={building} selectedBuilding={selectedBuilding} startingBuilding={startingBuilding} destinationBuilding={destinationBuilding} setStartingBuilding={setStartingBuilding} setDestinationBuilding={setDestinationBuilding} setSelectedBuilding={setSelectedBuilding} BASE_WEIGHT={BASE_WEIGHT} />
                 ))}
               </Pane>
 
               <Pane name="pane-route" style={{ zIndex: 504 }}>
                 {renderedRoute.current.length > 0 && 
-                  <Polyline positions={renderedRoute.current.map(x => { return { lat: x.lat, lng: x.lon } })} color="#4b80ea" fillOpacity={1} weight={5}></Polyline>
+                  <Polyline positions={renderedRoute.current.map(x => { return { lat: x.lat, lng: x.lon } })} color="#4b80ea" fillOpacity={1} weight={BASE_WEIGHT + 5}></Polyline>
                 }
               </Pane>
                 
               <Pane name="pane-circles" style={{ zIndex: 505 }}>
                 {renderedCircles.map((position, i) => (
                   // @ts-ignore
-                  <Circle key={`${position.lat}-${position.lon}`} center={position} radius={5} color="#4b80ea" weight={4} fillColor="#eaedf1" fillOpacity={1} />
+                  <Circle key={`${position.lat}-${position.lon}`} center={position} radius={5} color="#4b80ea" weight={BASE_WEIGHT + 4} fillColor="#eaedf1" fillOpacity={1} />
                 ))}
               </Pane>
 
