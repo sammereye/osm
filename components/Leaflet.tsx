@@ -305,10 +305,15 @@ export default function Leaflet() {
         if (currentNode.lat === destinationPoint.lat && currentNode.lon === destinationPoint.lon) {
           let curr = currentNode;
           let path: LatLngQueryWithRoad[] = []
+          console.log(curr);
           while (curr.parent) {
             path.push(curr);
             curr = curr.parent;
           }
+
+          path.push(curr);
+
+          console.log(path.map(x => x.lat))
   
           return path.reverse();
         }
@@ -446,8 +451,8 @@ export default function Leaflet() {
         const closestDestinationNode = findClosestCoordinate(closestDestinationBuildingPoint, removeDuplicateLatLngQueryWithRoad(destinationBuildingRoadPoints));
 
         const routeNodes = searchForShortestPath(closestStartingNode, closestDestinationNode);
-        routeNodes.unshift();
-        routeNodes.pop();
+        // routeNodes.unshift();
+        // routeNodes.pop();
         const route = removeDuplicateLatLngQueryWithRoad([closestStartingBuildingPoint, ...routeNodes, closestDestinationBuildingPoint]);
         renderedRoute.current = route;
         setRenderedCircles((prevRenderedCircles: LatLngQueryWithRoad[]) => {
