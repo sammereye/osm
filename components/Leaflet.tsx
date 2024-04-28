@@ -434,23 +434,58 @@ export default function Leaflet() {
       return closestPoint;
     }
 
+    function distanceToLine(point1: LatLngQueryWithRoad, point2: LatLngQueryWithRoad, point3: LatLngQueryWithRoad) {
+      // Convert degrees to radians
+      const lat1Rad = toRadians(point1.lat);
+      const lon1Rad = toRadians(point1.lon);
+      const lat2Rad = toRadians(point2.lat);
+      const lon2Rad = toRadians(point2.lon);
+      const lat3Rad = toRadians(point3.lat);
+      const lon3Rad = toRadians(point3.lon);
+    
+      // Calculate the vector along the line
+      const dx = lon2Rad - lon1Rad;
+      const dy = lat2Rad - lat1Rad;
+    
+      // Calculate the vector from point1 to point3
+      const dX = lon3Rad - lon1Rad;
+      const dY = lat3Rad - lat1Rad;
+    
+      // Compute the distance from point3 to the line
+      const numerator = dX * dy - dY * dx;
+      const denominator = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+      const distance = Math.abs(numerator / denominator);
+    
+      // Convert radians back to degrees (optional)
+      return distance * (180 / Math.PI); // Uncomment for degrees
+      // return distance; // Keep commented for radians
+    }
+    
+    // Helper function to convert degrees to radians
+    function toRadians(degrees: number) {
+      return degrees * (Math.PI / 180);
+    }
+
     function removeEndPointsIfNeeded(arr: LatLngQueryWithRoad[]) {
       const cleanedUpRoute = [...arr];
   
       if (cleanedUpRoute.length >= 3) {
         const [startingPoint, secondPoint, thirdPoint] = cleanedUpRoute.slice(0,3);
+        const distance = distanceToLine(thirdPoint, secondPoint, startingPoint);
         // If all three points are on the same lat or lon axis
-        if ((Math.abs(startingPoint.lat - secondPoint.lat) < 0.00001 && Math.abs(startingPoint.lat - thirdPoint.lat) < 0.00001) || (Math.abs(startingPoint.lon - secondPoint.lon) < 0.00001  && Math.abs(startingPoint.lon - thirdPoint.lon) < 0.00001)) {
+        if (distance !== 0 && distance < 0.0000000000001) {
           if (calculateDistance(startingPoint, thirdPoint) < calculateDistance(secondPoint, thirdPoint)) {
-            cleanedUpRoute.splice(1);
+            cleanedUpRoute.splice(1, 1);
           }
         }
       }
   
       if (cleanedUpRoute.length >= 3) {
         const [thirdToLastPoint, secondToLastPoint, endingPoint] = cleanedUpRoute.slice(-3);
+
+        const distance = distanceToLine(thirdToLastPoint, secondToLastPoint, endingPoint);
         // If all three points are on the same lat or lon axis
-        if ((Math.abs(endingPoint.lat - secondToLastPoint.lat) < 0.00001 && Math.abs(endingPoint.lat - thirdToLastPoint.lat) < 0.00001) || (Math.abs(endingPoint.lon - secondToLastPoint.lon) < 0.00001  && Math.abs(endingPoint.lon - thirdToLastPoint.lon) < 0.00001)) {
+        if (distance !== 0 && distance < 0.0000000000001) {
           if (calculateDistance(endingPoint, thirdToLastPoint) < calculateDistance(secondToLastPoint, thirdToLastPoint)) {
             cleanedUpRoute.splice(cleanedUpRoute.length - 2, 1);
           }
@@ -476,8 +511,7 @@ export default function Leaflet() {
         const closestDestinationNode = findClosestCoordinate(closestDestinationBuildingPoint, removeDuplicateLatLngQueryWithRoad(destinationBuildingRoadPoints));
 
         let routeNodes = searchForShortestPath(closestStartingNode, closestDestinationNode);
-        // routeNodes.unshift();
-        // routeNodes.pop();
+
         routeNodes = removeDuplicateLatLngQueryWithRoad([closestStartingBuildingPoint, ...routeNodes, closestDestinationBuildingPoint]);
         routeNodes = removeEndPointsIfNeeded(routeNodes);
         
