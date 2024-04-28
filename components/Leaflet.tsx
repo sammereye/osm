@@ -46,7 +46,8 @@ export default function Leaflet() {
   }))
 
   function getRoadWeight(road: Element): number {
-    let weight = 5;
+    const base_weight = 5;
+    let weight = base_weight;
 
     switch (road?.tags.highway) {
       case 'motorway':
@@ -55,24 +56,24 @@ export default function Leaflet() {
       case 'motorway_link':
       case 'trunk_link':
       case 'primary_link':
-        weight = 13;
+        weight += 13;
         break;
         case 'secondary':
         case 'secondary_link':
-        weight = 11;
+        weight += 11;
         break;
       case 'tertiary':
       case 'tertiary_link':
-        weight = 9;
+        weight += 9;
         break;
       case 'residential':
       case 'road':
       case 'raceway':
       case 'living_street':
-        weight = 7;
+        weight += 7;
         break;
       default:
-        weight = 5;
+        weight += 5;
     }
 
     return weight;
