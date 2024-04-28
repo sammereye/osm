@@ -5,7 +5,6 @@ import { Circle, MapContainer, Pane, Polygon, Polyline, TileLayer } from "react-
 import Car from "./Car";
 import Building from "./Building";
 
-const position: leaflet.LatLngExpression = [39.80575, -86.22963]
 const BASE_WEIGHT = 5;
 
 export default function Leaflet() {
@@ -21,40 +20,48 @@ export default function Leaflet() {
   const [map, setMap] = useState<Map>();
 
   useEffect(() => {
-    var geolocationOptions = {
-      enableHighAccuracy: true,
-      timeout: 5000,
-      maximumAge: 0,
-    };
-
-    function success(pos: GeolocationPosition) {
-      var crd = pos.coords;
-      console.log("Your current position is:");
-      console.log(`Latitude : ${crd.latitude}`);
-      console.log(`Longitude: ${crd.longitude}`);
-      console.log(`More or less ${crd.accuracy} meters.`);
+    const getLocationIntervalId = setInterval(() => {
+      var geolocationOptions = {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0,
+        
+      };
   
-      setUserPosition([crd.latitude, crd.longitude]);
-    }
-  
-    function errors(err: GeolocationPositionError) {
-      console.warn(`ERROR(${err.code}): ${err.message}`);
-    }
-
-    if (navigator.geolocation) {
-      navigator.permissions
-      .query({ name: "geolocation" })
-      .then(function (result) {
-        if (result.state === 'granted') {
-          navigator.geolocation.getCurrentPosition(success, errors, geolocationOptions);
-        } else {
-          console.log("Don't have access to location")
+      function success(pos: GeolocationPosition) {
+        var crd = pos.coords;
+        console.log("Your current position is:");
+        console.log(`Latitude : ${crd.latitude}`);
+        console.log(`Longitude: ${crd.longitude}`);
+        console.log(`More or less ${crd.accuracy} meters.`);
+    
+        setUserPosition([crd.latitude, crd.longitude]);
+        if (map) {
+          map.panTo([crd.latitude, crd.longitude])
         }
-      });
-    } else {
-      console.log("Geolocation is not supported by this browser.");
-    }
-  }, []);
+      }
+    
+      function errors(err: GeolocationPositionError) {
+        console.warn(`ERROR(${err.code}): ${err.message}`);
+      }
+  
+      if (navigator.geolocation) {
+        navigator.permissions
+        .query({ name: "geolocation" })
+        .then(function (result) {
+          if (result.state === 'granted') {
+            navigator.geolocation.getCurrentPosition(success, errors, geolocationOptions);
+          } else {
+            console.log("Don't have access to location")
+          }
+        });
+      } else {
+        console.log("Geolocation is not supported by this browser.");
+      }
+    }, 5000);
+
+    return () => { clearInterval(getLocationIntervalId) }
+  }, [map]);
 
   const mapRef = useCallback((mapNode: Map) => {
     if (mapNode) {
@@ -232,6 +239,7 @@ export default function Leaflet() {
     const loadMap = () => {
       if (map) {
         const bounds = map.getBounds();
+        map.dragging.disable();
         const mapTiles: Bounds[] = getMapTiles(bounds);
 
         removeOutOfViewElements(mapTiles);
@@ -590,16 +598,16 @@ export default function Leaflet() {
   if (userPosition) {
     return (
       <div className="h-dvh w-dvw flex justify-center items-center">
-        <div>
+        <div className="pb-[56px]">
           {selectedBuilding &&
             <>
               <div className="text-center text-sm tracking-tight text-stone-700 font-bold">{selectedBuilding?.tags["addr:housenumber"]} {selectedBuilding?.tags["addr:street"]}</div>
-              <div className="text-center mb-3 font-bold text-stone-800">{getWoodGenerationAmount()} 🪵 / hr</div>
+              <div className="text-center mb-3 font-bold text-stone-800">{getWoodGenerationAmount()} 🪵 / min</div>
             </>
           }
           <div className="relative w-[400px] h-[400px] overflow-hidden rounded-3xl border border-[#e8eaef]">
             <div className="scale-50 absolute top-[-200px] left-[-200px]">
-              <MapContainer ref={mapRef} className="w-[800px] h-[800px]" center={position} zoom={19} zoomControl={false} touchZoom={false} minZoom={19} maxZoom={19} preferCanvas>
+              <MapContainer ref={mapRef} className="w-[800px] h-[800px]" center={userPosition} zoom={19} zoomControl={false} touchZoom={false} minZoom={19} maxZoom={19}>
               {/* <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -652,7 +660,7 @@ export default function Leaflet() {
                 <Pane name="pane-user-circle" style={{ zIndex: 506 }}>
                   {(
                     // @ts-ignore
-                    <Circle center={userPosition} radius={3} color="#4b80ea" weight={4} fillColor="#dce5f2" fillOpacity={1} />
+                    <Circle center={userPosition} radius={3} color="#4b80ea" weight={6} fillColor="#dce5f2" fillOpacity={1} />
                   )}
                 </Pane>
               </MapContainer>
