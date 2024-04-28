@@ -29,6 +29,7 @@ export default function Leaflet() {
   const [renderedWaterways, setRenderedWaterways] = useState<Element[]>([]);
   const [renderedGrassland, setRenderedGrassland] = useState<Element[]>([]);
   const [renderedCircles, setRenderedCircles] = useState<LatLngQueryWithRoad[]>([]);
+  const [selectedBuilding, setSelectedBuilding] = useState<ElementWithCenter | null>(null);
   const [startingBuilding, setStartingBuilding] = useState<ElementWithCenter | null>(null);
   const [destinationBuilding, setDestinationBuilding] = useState<ElementWithCenter | null>(null);
 
@@ -79,7 +80,7 @@ export default function Leaflet() {
 
   function getMapTiles(bounds: leaflet.LatLngBounds): Bounds[] {
     const tileSize = 0.005;
-    const mapSize = 500;
+    const mapSize = 800;
     let northEdge = bounds.getNorth();
     let westEdge = bounds.getWest();
     let eastEdge = bounds.getEast();
@@ -521,63 +522,94 @@ export default function Leaflet() {
         })
       }
     }
-  }, [startingBuilding, destinationBuilding, roadData, setStartingBuilding, setDestinationBuilding])
+  }, [startingBuilding, destinationBuilding, roadData])
 
+  function seededRandom(seed: number) {
+    let state = seed;
+    
+    // Linear Congruential Generator (LCG) algorithm
+    const multiplier = 1103515245;
+    const increment = 12345;
+    const mod = Math.pow(2, 31);
+  
+    state = (multiplier * state + increment) % mod;
+    return state / mod;
+  }
+
+  function getWoodGenerationAmount() {
+    const base_generation = 7;
+    let generationAmount = base_generation;
+    if (selectedBuilding) {
+      const randVal = seededRandom(selectedBuilding.id);
+
+      generationAmount += Math.floor(Math.pow(2, randVal * 6));
+    }
+
+    return generationAmount;
+  }
 
   return (
     <div className="h-dvh w-dvw flex justify-center items-center">
-      <div className="relative w-[250px] h-[250px] overflow-hidden rounded-3xl border border-[#e8eaef]">
-        <div className="scale-50 absolute top-[-125px] left-[-125px]">
-          <MapContainer ref={mapRef} className="w-[500px] h-[500px]" center={position} zoom={18} zoomControl={false} touchZoom={false} minZoom={18} maxZoom={18} preferCanvas>
-          {/* <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          /> */}
+      <div>
+        {selectedBuilding &&
+          <>
+            <div className="text-center text-sm tracking-tight text-stone-700 font-bold">{selectedBuilding?.tags["addr:housenumber"]} {selectedBuilding?.tags["addr:street"]}</div>
+            <div className="text-center mb-3 font-bold text-stone-800">{getWoodGenerationAmount()} 🪵 / hr</div>
+          </>
+        }
+        <div className="relative w-[400px] h-[400px] overflow-hidden rounded-3xl border border-[#e8eaef]">
+          <div className="scale-50 absolute top-[-200px] left-[-200px]">
+            <MapContainer ref={mapRef} className="w-[800px] h-[800px]" center={position} zoom={19} zoomControl={false} touchZoom={false} minZoom={19} maxZoom={19} preferCanvas>
+            {/* <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            /> */}
 
-            <Pane name="pane-grassland" style={{ zIndex: 500 }}>
-              {renderedGrassland.map((grassland, i) => (
-                // @ts-ignore
-                <Polygon key={grassland.id} positions={grassland.geometry} fillColor="#a7dfb6" fillOpacity={1} stroke={false}></Polygon>
+              <Pane name="pane-grassland" style={{ zIndex: 500 }}>
+                {renderedGrassland.map((grassland, i) => (
+                  // @ts-ignore
+                  <Polygon key={grassland.id} positions={grassland.geometry} fillColor="#a7dfb6" fillOpacity={1} stroke={false}></Polygon>
+                ))}
+              </Pane>
+
+              <Pane name="pane-waterways" style={{ zIndex: 501 }}>
+                {renderedWaterways.map((waterway, i) => (
+                  // @ts-ignore
+                  <Polyline key={waterway.id} positions={waterway.geometry} color="#b3daff" fillOpacity={1} weight={7}></Polyline>
+                ))}
+              </Pane>
+
+              <Pane name="pane-roads" style={{ zIndex: 502 }}>
+                {renderedRoads.map((road, i) => (
+                  // @ts-ignore
+                  <Polyline key={road.id} positions={road.geometry} color="#ffffff" fillOpacity={1} weight={road.weight}></Polyline>
+                ))}
+              </Pane>
+
+              <Pane name="pane-building" style={{ zIndex: 503 }}>
+                {renderedBuildings.map((building, i) => (
+                  <Building key={building.id} building={building} selectedBuilding={selectedBuilding} startingBuilding={startingBuilding} destinationBuilding={destinationBuilding} setStartingBuilding={setStartingBuilding} setDestinationBuilding={setDestinationBuilding} setSelectedBuilding={setSelectedBuilding} />
+                ))}
+              </Pane>
+
+              <Pane name="pane-route" style={{ zIndex: 504 }}>
+                {renderedRoute.current.length > 0 && 
+                  <Polyline positions={renderedRoute.current.map(x => { return { lat: x.lat, lng: x.lon } })} color="#4b80ea" fillOpacity={1} weight={5}></Polyline>
+                }
+              </Pane>
+                
+              <Pane name="pane-circles" style={{ zIndex: 505 }}>
+                {renderedCircles.map((position, i) => (
+                  // @ts-ignore
+                  <Circle key={`${position.lat}-${position.lon}`} center={position} radius={5} color="#4b80ea" weight={4} fillColor="#eaedf1" fillOpacity={1} />
+                ))}
+              </Pane>
+
+              {false && cars.map((car) => (
+                <Car key={car.id} roads={roadData.current} startingNode={car.startingNode} />
               ))}
-            </Pane>
-
-            <Pane name="pane-waterways" style={{ zIndex: 501 }}>
-              {renderedWaterways.map((waterway, i) => (
-                // @ts-ignore
-                <Polyline key={waterway.id} positions={waterway.geometry} color="#b3daff" fillOpacity={1} weight={7}></Polyline>
-              ))}
-            </Pane>
-
-            <Pane name="pane-roads" style={{ zIndex: 502 }}>
-              {renderedRoads.map((road, i) => (
-                // @ts-ignore
-                <Polyline key={road.id} positions={road.geometry} color="#ffffff" fillOpacity={1} weight={road.weight}></Polyline>
-              ))}
-            </Pane>
-
-            <Pane name="pane-building" style={{ zIndex: 503 }}>
-              {renderedBuildings.map((building, i) => (
-                <Building key={building.id} building={building} startingBuilding={startingBuilding} destinationBuilding={destinationBuilding} setStartingBuilding={setStartingBuilding} setDestinationBuilding={setDestinationBuilding} />
-              ))}
-            </Pane>
-
-            <Pane name="pane-route" style={{ zIndex: 504 }}>
-              {renderedRoute.current.length > 0 && 
-                <Polyline positions={renderedRoute.current.map(x => { return { lat: x.lat, lng: x.lon } })} color="#4b80ea" fillOpacity={1} weight={5}></Polyline>
-              }
-            </Pane>
-              
-            <Pane name="pane-circles" style={{ zIndex: 505 }}>
-              {renderedCircles.map((position, i) => (
-                // @ts-ignore
-                <Circle key={`${position.lat}-${position.lon}`} center={position} radius={5} color="#4b80ea" weight={4} fillColor="#eaedf1" fillOpacity={1} />
-              ))}
-            </Pane>
-
-            {false && cars.map((car) => (
-              <Car key={car.id} roads={roadData.current} startingNode={car.startingNode} />
-            ))}
-          </MapContainer>
+            </MapContainer>
+          </div>
         </div>
       </div>
     </div>
