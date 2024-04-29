@@ -100,7 +100,7 @@ export default function Leaflet() {
 
   useEffect(() => {
     function handleResize() {
-      setScreenWidth(window.innerWidth)
+      setScreenWidth(window.innerWidth - 60)
     }
     
     window.addEventListener("resize", handleResize)
