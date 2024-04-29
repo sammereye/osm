@@ -20,7 +20,7 @@ export default function Leaflet() {
   const [map, setMap] = useState<Map>();
 
   useEffect(() => {
-    const getLocationIntervalId = setInterval(() => {
+    function getAndSetLocation() {
       var geolocationOptions = {
         enableHighAccuracy: true,
         timeout: 5000,
@@ -30,10 +30,10 @@ export default function Leaflet() {
   
       function success(pos: GeolocationPosition) {
         var crd = pos.coords;
-        console.log("Your current position is:");
-        console.log(`Latitude : ${crd.latitude}`);
-        console.log(`Longitude: ${crd.longitude}`);
-        console.log(`More or less ${crd.accuracy} meters.`);
+        // console.log("Your current position is:");
+        // console.log(`Latitude : ${crd.latitude}`);
+        // console.log(`Longitude: ${crd.longitude}`);
+        // console.log(`More or less ${crd.accuracy} meters.`);
     
         setUserPosition([crd.latitude, crd.longitude]);
         if (map) {
@@ -58,6 +58,12 @@ export default function Leaflet() {
       } else {
         console.log("Geolocation is not supported by this browser.");
       }
+    }
+
+    getAndSetLocation();
+
+    const getLocationIntervalId = setInterval(() => {
+      getAndSetLocation();
     }, 5000);
 
     return () => { clearInterval(getLocationIntervalId) }
@@ -70,6 +76,7 @@ export default function Leaflet() {
     }
   }, []);
   
+  const [screenWidth, setScreenWidth] = useState<number>(0);
   const [renderedRoads, setRenderedRoads] = useState<ElementWithWeight[]>([]);
   const [renderedBuildings, setRenderedBuildings] = useState<Element[]>([]);
   const [renderedWaterways, setRenderedWaterways] = useState<Element[]>([]);
@@ -90,6 +97,32 @@ export default function Leaflet() {
       startingNode: 180704110
     }
   }))
+
+  useEffect(() => {
+    function handleResize() {
+      setScreenWidth(window.innerWidth)
+    }
+    
+    window.addEventListener("resize", handleResize)
+    
+    handleResize()
+    
+    return () => { 
+      window.removeEventListener("resize", handleResize)
+    }
+  }, [setScreenWidth])
+
+  function getScaleSize() {
+    return screenWidth / 800;
+  }
+
+  function getHalfWidth() {
+    return screenWidth / 800 * 400;
+  }
+
+  function getQuarterWidth() {
+    return screenWidth / 800 * 200;
+  }
 
   function getRoadWeight(road: Element): number {
     let weight = BASE_WEIGHT;
@@ -605,8 +638,8 @@ export default function Leaflet() {
               <div className="text-center mb-3 font-bold text-stone-800">{getWoodGenerationAmount()} 🪵 / min</div>
             </>
           }
-          <div className="relative w-[400px] h-[400px] overflow-hidden rounded-3xl border border-[#e8eaef]">
-            <div className="scale-50 absolute top-[-200px] left-[-200px]">
+          <div className="relative overflow-hidden rounded-3xl border border-[#e8eaef]" style={{ width: `${screenWidth}px`, height: `${screenWidth}px` }}>
+            <div className="absolute" style={{ transform: `scale(${getScaleSize()})`, top: `${(screenWidth - 800) / 2}px`, left: `${(screenWidth - 800) / 2}px` }}>
               <MapContainer ref={mapRef} className="w-[800px] h-[800px]" center={userPosition} zoom={19} zoomControl={false} touchZoom={false} minZoom={19} maxZoom={19}>
               {/* <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
