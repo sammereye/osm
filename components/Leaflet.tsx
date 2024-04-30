@@ -280,6 +280,7 @@ export default function Leaflet() {
       if (map) {
         const bounds = map.getBounds();
         map.dragging.disable();
+        map.doubleClickZoom.disable();
         const mapTiles: Bounds[] = getMapTiles(bounds);
 
         removeOutOfViewElements(mapTiles);
