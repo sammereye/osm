@@ -21,9 +21,8 @@ export default function Leaflet() {
 
   useEffect(() => {
     function getAndSetLocation() {
-      var geolocationOptions = {
+      var geolocationOptions: PositionOptions = {
         enableHighAccuracy: true,
-        timeout: 5000,
         maximumAge: 0,
         
       };
@@ -50,6 +49,8 @@ export default function Leaflet() {
         .query({ name: "geolocation" })
         .then(function (result) {
           if (result.state === 'granted') {
+            navigator.geolocation.getCurrentPosition(success, errors, geolocationOptions);
+          } else if (result.state === 'prompt') {
             navigator.geolocation.getCurrentPosition(success, errors, geolocationOptions);
           } else {
             console.log("Don't have access to location")
