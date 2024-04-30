@@ -642,7 +642,7 @@ export default function Leaflet() {
           {selectedBuilding &&
             <>
               <div className="text-center text-sm tracking-tight text-stone-700 font-bold">{selectedBuilding?.tags["addr:housenumber"]} {selectedBuilding?.tags["addr:street"]}</div>
-              <div className="text-center mb-3 font-bold text-stone-800">{getWoodGenerationAmount()} 🪵 / min</div>
+              <div className="text-center mb-3 font-bold text-stone-800">{getWoodGenerationAmount()} &#x1FAB5; / min</div>
             </>
           }
           <div className="relative overflow-hidden rounded-3xl border border-[#e8eaef]" style={{ width: `${Math.min(screenWidth, screenHeight)}px`, height: `${Math.min(screenWidth, screenHeight)}px` }}>
