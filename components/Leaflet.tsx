@@ -78,6 +78,7 @@ export default function Leaflet() {
   }, []);
   
   const [screenWidth, setScreenWidth] = useState<number>(0);
+  const [screenHeight, setScreenHeight] = useState<number>(0);
   const [renderedRoads, setRenderedRoads] = useState<ElementWithWeight[]>([]);
   const [renderedBuildings, setRenderedBuildings] = useState<Element[]>([]);
   const [renderedWaterways, setRenderedWaterways] = useState<Element[]>([]);
@@ -102,6 +103,7 @@ export default function Leaflet() {
   useEffect(() => {
     function handleResize() {
       setScreenWidth(window.innerWidth - 60)
+      setScreenHeight(window.innerHeight - 120)
     }
     
     window.addEventListener("resize", handleResize)
@@ -111,14 +113,18 @@ export default function Leaflet() {
     return () => { 
       window.removeEventListener("resize", handleResize)
     }
-  }, [setScreenWidth])
+  }, [setScreenWidth, setScreenHeight])
 
   function getScaleSize() {
-    return screenWidth / 800;
+    const screenWidthScale = screenWidth / 800;
+    const screenHeightScale = screenHeight / 800;
+    return Math.min(screenWidthScale, screenHeightScale)
   }
 
   function getHalfWidth() {
-    return screenWidth / 800 * 400;
+    const screenWidthHalf = screenWidth / 800 * 400;
+    const screenHeightHalf = screenHeight / 800 * 400;
+    return Math.min(screenWidthHalf, screenHeightHalf)
   }
 
   function getQuarterWidth() {
@@ -632,15 +638,15 @@ export default function Leaflet() {
   if (userPosition) {
     return (
       <div className="h-dvh w-dvw flex justify-center items-center">
-        <div className="pb-[56px]">
+        <div>
           {selectedBuilding &&
             <>
               <div className="text-center text-sm tracking-tight text-stone-700 font-bold">{selectedBuilding?.tags["addr:housenumber"]} {selectedBuilding?.tags["addr:street"]}</div>
               <div className="text-center mb-3 font-bold text-stone-800">{getWoodGenerationAmount()} 🪵 / min</div>
             </>
           }
-          <div className="relative overflow-hidden rounded-3xl border border-[#e8eaef]" style={{ width: `${screenWidth}px`, height: `${screenWidth}px` }}>
-            <div className="absolute" style={{ transform: `scale(${getScaleSize()})`, top: `${(screenWidth - 800) / 2}px`, left: `${(screenWidth - 800) / 2}px` }}>
+          <div className="relative overflow-hidden rounded-3xl border border-[#e8eaef]" style={{ width: `${Math.min(screenWidth, screenHeight)}px`, height: `${Math.min(screenWidth, screenHeight)}px` }}>
+            <div className="absolute" style={{ transform: `scale(${getScaleSize()})`, top: `${(Math.min(screenWidth - 800, screenHeight - 800)) / 2}px`, left: `${(Math.min(screenWidth - 800, screenHeight - 800)) / 2}px` }}>
               <MapContainer ref={mapRef} className="w-[800px] h-[800px]" center={userPosition} zoom={19} zoomControl={false} touchZoom={false} minZoom={19} maxZoom={19}>
               {/* <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
